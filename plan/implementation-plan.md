@@ -7,7 +7,9 @@ The plan intentionally finishes core work before bonus work.
 ## Phase 0 - Scaffold and Guardrails
 
 - [ ] Create KMP project + Android app.
-- [ ] Finalize module/source-set names.
+- [ ] Finalize target ownership: `sharedLogic` for shared domain/data and `androidApp` for all Android presentation/wiring.
+- [ ] Keep the existing `sharedUI` scaffold out of the target architecture; do not add new production code there.
+- [ ] Keep iOS UI out of core scope; retain an iOS shared target only if its platform construction remains low-risk and complete.
 - [ ] Add non-negotiable dependencies.
 - [ ] Add local API-key configuration and `.gitignore`.
 - [ ] Confirm clean build.
@@ -18,22 +20,24 @@ The plan intentionally finishes core work before bonus work.
 
 ## Phase 1 - Domain + Offline Contract
 
-- [ ] Define domain `Article`.
-- [ ] Define domain error/result model.
-- [ ] Define repository contract.
-- [ ] Define refresh/cache semantics.
-- [ ] Add use case(s) only where they add a clear boundary.
+- [ ] Define domain `Article` with canonical URL and stable deterministic URL-derived local ID.
+- [ ] Define domain error/result model without exposing infrastructure exceptions.
+- [ ] Define the small repository contract: `observeArticles()`, `observeArticle(id)`, `refreshArticles()`.
+- [ ] Define typed durable content states: Loading, Data, Empty, Error; keep refreshing orthogonal.
+- [ ] Define refresh/cache/empty semantics, including valid empty snapshots and failed replacement behavior.
+- [ ] Add use case(s) only where they add a meaningful domain/presentation boundary.
 
 **Exit:** dependency direction is clear before UI implementation.
 
 ## Phase 2 - Data Layer
 
 - [ ] NewsAPI DTOs and explicit mapping.
-- [ ] Ktor client with timeout + logging configuration.
-- [ ] Room KMP database/entity/DAO.
+- [ ] Ktor shared API behavior with platform-specific engine construction, injected configuration, and redacted logging.
+- [ ] Room KMP database/entity/DAO with one DI-owned instance, platform builders, and checked-in schema output.
 - [ ] Repository implementation.
-- [ ] Persist successful usable remote data.
-- [ ] Never delete valid cache on remote failure.
+- [ ] Validate/map the full remote response before transactionally replacing the cached headline snapshot.
+- [ ] Preserve the previous committed cache on remote, malformed-data, or database-replacement failure.
+- [ ] Define stable ID, canonical URL, duplicate, and ordering behavior.
 
 **Exit:** repository can synchronize and expose persisted data.
 
@@ -42,14 +46,15 @@ The plan intentionally finishes core work before bonus work.
 - [ ] T1 fetch -> map -> persist -> expose.
 - [ ] T2 remote failure -> cached data survives.
 - [ ] T3 remote + local unavailable -> relevant error.
+- [ ] Add only the cheap high-value checks documented in `specs/testing.md` as time permits; do not make them blockers.
 - [ ] Fix architecture issues exposed by tests.
 
 **Exit:** all required unit/shared tests green.
 
 ## Phase 4 - Presentation
 
-- [ ] Article list UI.
-- [ ] ViewModel + StateFlow.
+- [ ] Article list UI in `androidApp`.
+- [ ] Android ViewModel + StateFlow with typed durable content state and one-shot effects.
 - [ ] Initial loading.
 - [ ] Cached-content state.
 - [ ] Pull-to-refresh.
@@ -57,7 +62,7 @@ The plan intentionally finishes core work before bonus work.
 - [ ] Empty state.
 - [ ] Blocking no-data error.
 - [ ] Article detail.
-- [ ] Navigation + both back paths.
+- [ ] Navigation by stable article ID + both back paths.
 - [ ] Coil image loading.
 
 **Exit:** all core flows work manually online and offline.
@@ -66,7 +71,7 @@ The plan intentionally finishes core work before bonus work.
 
 - [ ] T4 app -> list -> detail.
 - [ ] T5 cached/offline state renders.
-- [ ] Make DI/data deterministic for tests.
+- [ ] Inject deterministic repository/data boundaries for tests; never use the real NewsAPI.
 
 **Exit:** required UI tests green and stable.
 
@@ -78,6 +83,7 @@ The plan intentionally finishes core work before bonus work.
 - [ ] Review accessibility basics.
 - [ ] Check naming and dead code.
 - [ ] Verify API-key hygiene, including git history.
+- [ ] Verify target module/source-set ownership against `specs/architecture.md`.
 - [ ] Test setup instructions from a clean checkout.
 
 **Exit:** core submission is shippable.

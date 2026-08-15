@@ -2,34 +2,52 @@
 
 ## Goals
 
-The architecture should make offline behavior easy to reason about, keep business/data logic shared, and keep Android-specific presentation isolated.
+Keep the implementation small while making the offline-first behavior explicit, testable, and shared where it provides real value. Android is the required product target. iOS UI is not core scope.
+
+## Target Module Ownership
+
+There are no additional Gradle modules in the target architecture.
+
+```text
+androidApp
+  Compose screens, ViewModels, Navigation
+  durable UI state and one-shot UI effects
+  Coil and application/composition wiring
+          |
+          v
+sharedLogic
+  commonMain: domain + shared data behavior
+  androidMain/iosMain: unavoidable platform construction
+```
+
+`sharedUI` is an existing scaffold module, but it is not part of the target architecture. New production presentation code must not be placed there.
 
 ## Dependency Direction
 
 ```text
-androidApp/presentation -----> shared/domain
-                                   ^
-                                   |
-shared/data ----------------------+
+androidApp/presentation -----> sharedLogic/domain contracts
+                                      ^
+                                      |
+                         sharedLogic/data implementation
 ```
 
 Rules:
 
-- Domain knows no UI, Ktor, Room, Android, or platform details.
-- Data implements domain repository contracts.
-- Presentation depends on domain-facing APIs, not DAOs or HTTP clients.
-- Platform source sets provide only unavoidable platform implementations.
+- Domain knows no Compose, ViewModel, Ktor, Room, Android, or platform details.
+- Shared data implements domain repository contracts.
+- Presentation depends on repository/use-case APIs, never on DAOs, Ktor clients, or raw data sources.
+- Platform source sets contain only unavoidable engine, database-builder, filesystem, or platform API code.
+- Composition wiring is owned by `androidApp`; tests may construct dependencies directly.
 
-## Suggested Shared Structure
+## Source-Set Structure
 
 ```text
-shared/src/commonMain/kotlin/.../
+sharedLogic/src/commonMain/kotlin/.../
   domain/
     model/
     repository/
-    usecase/
     error/
-
+    usecase/       # only meaningful boundaries
   data/
     remote/
       api/
@@ -41,14 +59,12 @@ shared/src/commonMain/kotlin/.../
     mapper/
     repository/
 
-  di/
-```
+sharedLogic/src/androidMain/
+  Android HTTP engine and Room database construction
 
-Platform-specific implementation should be placed in `androidMain` / `iosMain` only when required by Room, Ktor engine setup, filesystem/platform APIs, etc.
+sharedLogic/src/iosMain/
+  iOS HTTP engine and Room database construction, only if the shared iOS target remains
 
-Android presentation:
-
-```text
 androidApp/src/main/.../
   presentation/
     articlelist/
@@ -59,110 +75,102 @@ androidApp/src/main/.../
   di/
 ```
 
-Avoid feature/module proliferation for a two-screen take-home.
+Ktor API/DTO/mapping behavior is shared. Ktor engine construction is platform-specific. Room entities, DAOs, and database declarations are shared where supported; database construction and filesystem paths remain platform-specific.
 
 ## Repository Contract
 
-Keep the public contract small.
-
-Conceptually:
+Keep the public contract conceptually small:
 
 ```text
-observeArticles() -> stream of persisted domain articles
-refreshArticles() -> synchronization result
-getArticle(id) -> persisted/domain article
+observeArticles() -> Flow of persisted domain articles
+observeArticle(id) -> Flow of the persisted article or absence
+refreshArticles() -> typed success/failure synchronization result
 ```
 
-Exact signatures can change, but the UI should not receive raw API DTOs or Room entities.
+The repository is the only boundary exposed to presentation. It maps infrastructure failures to domain-level errors and never exposes raw exceptions, API DTOs, or Room entities.
 
-## Single Source of Truth
+The article ID is a stable deterministic, collision-resistant value derived from the canonical article URL. The canonical URL is stored separately. Navigation passes the stable ID, never the whole `Article`.
 
-Room is the source of truth.
-
-```text
-1. UI subscribes to persisted articles.
-2. Cached articles can render immediately.
-3. Repository attempts remote refresh.
-4. Response is validated/mapped.
-5. Successful usable data is written transactionally to Room.
-6. Room emits the new state.
-7. UI updates from Room.
-```
-
-Do not clear valid cached content before a remote request succeeds.
-
-## Refresh Semantics
-
-Refreshing is separate from content availability.
-
-Useful presentation state concept:
-
-```text
-content: List<Article>
-isInitialLoading: Boolean
-isRefreshing: Boolean
-blockingError: DomainError?
-nonBlockingMessage: UiMessage?
-```
-
-This avoids replacing valid cached content with a full-screen error during a failed refresh.
-
-## Error Model
-
-Translate infrastructure failures into a small domain/presentation vocabulary.
-
-At minimum distinguish:
-
-- network/connectivity failure,
-- remote/server/API failure,
-- local persistence failure,
-- malformed/unusable data,
-- unknown failure.
-
-Do not leak raw exceptions to UI strings.
+Use cases are optional at individual operations. Add one only when it owns a meaningful domain or presentation boundary; do not create pass-through classes for every repository method.
 
 ## Mapping Boundaries
 
-Use explicit mappings:
+Use explicit mappings at the data boundary:
 
 ```text
-NewsApi DTO -> persistence entity -> domain model -> UI model (only if needed)
+NewsAPI DTO -> validated article data -> Room entity -> domain Article
 ```
 
-Avoid one model serving HTTP, DB, domain, and UI simultaneously.
+Do not use an API DTO or Room entity as the presentation contract. A separate UI model is optional only when it adds real value; typed presentation state remains in `androidApp`.
 
-## KMP Boundary
+## Offline-First Source of Truth
 
-Aim to share:
+Room is the exclusive readable source of article data for higher layers. Network responses never feed UI directly.
 
-- models,
-- repository contracts,
-- use cases,
-- business rules,
-- API DTOs and mapping,
-- Ktor client/API service,
-- Room entities/DAOs/database declarations where KMP supports them,
-- repository implementation,
-- domain errors and utilities.
+```text
+1. UI observes the repository's persisted-data flow.
+2. Cached data can render immediately.
+3. A refresh fetches remote data first.
+4. The full response is validated and mapped.
+5. A successful usable snapshot replaces the cached headline snapshot transactionally.
+6. Room emits the committed snapshot.
+7. UI updates from persisted data.
+```
 
-Keep Android-only:
+Never clear valid cached content before the network request succeeds. A malformed/unusable remote response or failed database replacement preserves the previous committed cache.
 
-- Compose application UI,
-- Android ViewModels if the chosen design keeps presentation Android-specific,
-- platform context/setup,
-- Android-only system APIs.
+## Refresh, Failure, and Empty Semantics
 
-### iOS
+- Remote failure preserves existing cache.
+- Malformed or unusable remote data preserves existing cache.
+- A failed database replacement preserves the previous committed cache.
+- A valid successful response with zero usable articles is a legitimate empty snapshot and may replace the previous snapshot.
+- A valid empty snapshot produces `Empty`; failure with no usable cache produces `Error`.
+- Infrastructure failures are classified into a small domain vocabulary such as network, remote/API, local persistence, malformed data, and unknown failure.
+- Cancellation is not converted into a user-facing failure.
 
-An iOS UI is a bonus, not a core deliverable.
+## Presentation State
 
-If low-risk, configure the shared module with an iOS target and keep platform construction behind clean boundaries. Do not jeopardize the Android deliverable merely to claim an iOS bonus.
+Durable article-list content uses typed states:
 
-## Performance Principles
+```text
+Loading
+Data(articles)
+Empty
+Error(uiError)
+```
 
-- Stable item keys in lazy lists.
+Refreshing is orthogonal to content availability:
+
+```text
+ArticleListUiState(
+  content: ContentState,
+  isRefreshing: Boolean
+)
+```
+
+`Data` remains visible while refreshing. A one-shot Snackbar/effect is delivered through an event mechanism such as `SharedFlow`; it is not represented as a persistent nullable `StateFlow` field. UI state contains presentation-safe messages, not raw infrastructure exceptions.
+
+## Room
+
+Use the current stable Room KMP API compatible with the selected Kotlin/AGP toolchain: shared database declarations with the supported `RoomDatabaseConstructor` pattern, compiler processing for every declared target, and the supported SQLite driver approach. Keep shared entities, DAOs, and database declarations in `commonMain` where supported, and check schema output into the repository.
+
+Provide one database instance through DI. The Android builder uses the application database path; other platform builders use their platform filesystem APIs. Do not pass `Context` or platform paths into domain code. Use KMP-compatible suspend, Flow, and transaction APIs rather than assuming Android-only Room APIs.
+
+No speculative migration framework is required. Start with an explicit schema version and add a real migration only when the schema changes.
+
+## Ktor and Configuration
+
+- Keep API models, serialization, mapping, request behavior, timeout configuration, and error mapping shared.
+- Construct the platform HTTP engine in the relevant platform source set.
+- Inject API configuration into shared code from the application composition root.
+- Keep the NewsAPI key in local-only configuration.
+- Never include the API key in request logs, headers logs, exception messages, or UI state.
+
+## Performance and Simplicity
+
+- Use stable lazy-list keys based on the stable article ID.
 - Avoid expensive transformation in Composables.
-- Expose already-prepared immutable UI state.
-- Avoid unnecessary Flow re-subscription/recomposition.
-- Let Coil handle image loading/caching.
-- Use sensible Ktor timeout/logging configuration; avoid verbose sensitive logging in production configuration.
+- Avoid duplicate refreshes and unnecessary Flow subscriptions.
+- Share one Coil `ImageLoader` at the Android application boundary.
+- Do not add pagination, extra modules, a full-screen image viewer, or iOS UI before core behavior is green.

@@ -38,7 +38,7 @@ Demonstrate:
 - Navigation Compose
 - Ktor Client
 - Room for KMP
-- Koin (planned; change this line if another DI approach is chosen)
+- Koin or another KMP-compatible DI approach, composed from `androidApp`
 - Coil
 - Gradle Kotlin DSL
 - JUnit + MockK/equivalent
@@ -47,15 +47,17 @@ Demonstrate:
 ## Architecture
 
 ```text
-androidApp / Presentation
+androidApp / Presentation + Composition Root
         |
         v
-shared / Domain  <----- shared / Data
-  models                 Ktor API
-  use cases              Room DB
-  repository contracts   mappers
-                         repository implementation
+sharedLogic / Domain  <----- sharedLogic / Data
+  models                         Ktor API
+  repository contracts            Room DB
+  meaningful use cases            mappers
+                                  repository implementation
 ```
+
+The existing `sharedUI` module is not part of the target architecture. Android presentation remains in `androidApp`; iOS UI is outside core scope.
 
 Offline-first data flow:
 
@@ -69,7 +71,7 @@ ViewModel / Use Case
    v
 Repository
    |
-   +---- observes Room (source of truth) ----> UI state
+   +---- observes persisted Room data (exclusive read source) ----> UI state
    |
    +---- refreshes NewsAPI
               |
@@ -78,6 +80,8 @@ Repository
               |
               +------------------------------> updated UI
 ```
+
+Network responses never feed UI directly. Refresh fetches first, validates/maps the full response, and transactionally replaces the persisted headline snapshot only after successful validation.
 
 See:
 
@@ -88,10 +92,10 @@ See:
 ## Source-Set Intent
 
 ```text
-shared/
+sharedLogic/
   commonMain/   domain + shared data/business logic
-  androidMain/  Android-only implementations when required
-  iosMain/      optional/low-risk KMP target support if practical
+  androidMain/  Android HTTP engine and Room database construction
+  iosMain/      iOS construction only if the shared target remains in scope
 
 androidApp/
   Compose UI + ViewModels + Navigation
@@ -105,15 +109,14 @@ Do **not** commit a real API key.
 
 Recommended local configuration:
 
-1. Copy `secrets.properties.example` to `secrets.properties`.
-2. Put your development key in the local file:
+1. Put your development key in the `local.properties`:
 
 ```properties
 NEWS_API_KEY=your_real_development_key
 ```
 
-3. Ensure `secrets.properties` is ignored by Git.
-4. Wire the value into the build/runtime configuration without placing the secret in source code.
+2. Ensure `local.properties` is ignored by Git.
+3. Wire the value into the build/runtime configuration without placing the secret in source code.
 
 Document the final mechanism here once implemented.
 
@@ -130,12 +133,18 @@ Expected final documentation should include commands for:
 
 ## Offline-First Decisions
 
-- Room is the source of truth for article rendering.
+- Room is the exclusive readable source of article data for higher layers.
 - Successful remote synchronization writes to Room.
 - UI observes local persisted state rather than rendering the raw network response.
+- The repository contract is `observeArticles()`, `observeArticle(id)`, and `refreshArticles()`.
+- Each article has a stable deterministic local ID derived from its canonical URL; Navigation passes the ID, not the whole article.
+- A valid successful empty response may replace the previous snapshot and produces the Empty state.
 - Existing cache survives remote refresh failure.
+- Malformed/unusable remote data and failed database replacement preserve the previous committed cache.
 - A refresh failure with cache is shown as a non-blocking message.
 - No cache + no usable remote/local data becomes an explicit error state.
+
+Durable content uses typed Loading, Data, Empty, and Error states. Refreshing is orthogonal to content availability, and one-shot Snackbar/effect messages are not persistent nullable StateFlow data.
 
 See `specs/architecture.md`.
 
@@ -150,6 +159,8 @@ The test suite must cover at least:
 3. both remote and local unavailable -> error,
 4. list -> tap article -> detail,
 5. previously cached articles render offline.
+
+Cheap high-value additions such as cache visibility during refresh, valid empty snapshots, failed transactional replacement, and stable ID/duplicate behavior are useful but are not additional implementation blockers.
 
 ## Android Studio Agent Mode Usage
 
@@ -172,6 +183,8 @@ Keep this short and concrete. Suggested decisions to document as implementation 
 - why Room is the UI source of truth,
 - refresh/cache semantics,
 - repository boundary and error model,
+- stable URL-derived article identity and ID-based navigation,
+- typed content state versus one-shot UI effects,
 - DI choice,
 - where platform-specific code is unavoidable,
 - whether an iOS shared target is included,

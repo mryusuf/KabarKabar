@@ -44,7 +44,28 @@ Must use:
 - Jetpack Compose + Navigation Compose,
 - Coil.
 
-Meaningful shared code is required. Adding a nominal KMP module without shared business/data logic is not sufficient.
+Target ownership is fixed:
+
+- `androidApp` owns Compose screens, ViewModels, Navigation, durable UI state, one-shot UI effects, Coil, and application/composition wiring.
+- `sharedLogic` is the KMP module containing shared domain and data behavior.
+- `sharedLogic/commonMain` contains domain contracts/models and shared API, mapping, repository, and Room behavior where supported.
+- `sharedLogic/androidMain` / `sharedLogic/iosMain` contain only required platform HTTP-engine and database construction.
+- The existing `sharedUI` module is not part of the target architecture.
+- iOS UI is not core scope.
+
+Meaningful shared code is required. A nominal KMP module without shared business/data logic is not sufficient.
+
+The readable article source for higher layers is persisted Room data. Network responses never feed UI directly.
+
+The conceptual repository contract is:
+
+```text
+observeArticles()
+observeArticle(id)
+refreshArticles()
+```
+
+Each article uses a stable deterministic local ID derived from its canonical URL. The canonical URL is preserved separately, and Navigation passes the stable ID rather than the whole article.
 
 ## 3. Offline-First Acceptance Scenarios
 
@@ -53,8 +74,9 @@ Meaningful shared code is required. Adding a nominal KMP module without shared b
 Given no cached articles,
 when the app starts with a working network,
 then it fetches NewsAPI,
-persists the usable result,
-and displays persisted articles.
+validates/maps the full usable response,
+replaces the persisted headline snapshot transactionally,
+and displays the committed persisted articles.
 
 ### R2 - Subsequent launch with cache
 
@@ -85,6 +107,12 @@ then the user sees a meaningful recoverable error state rather than a blank scre
 
 Given a successful request produces no usable articles,
 then the UI displays a deliberate empty state.
+
+Failure with no usable cache is `Error`, not `Empty`. A valid successful response containing zero usable articles is a legitimate empty snapshot and may replace the previous snapshot.
+
+Remote failure, malformed/unusable remote data, and failed database replacement must preserve the previous committed cache. Raw infrastructure exceptions must not reach presentation.
+
+Durable presentation content uses typed `Loading`, `Data`, `Empty`, and `Error` states. Refreshing is orthogonal to content availability, and cached `Data` remains visible during refresh. One-shot Snackbar/effect messages are not persistent nullable `StateFlow` data.
 
 ## 4. AI-Assisted Development
 

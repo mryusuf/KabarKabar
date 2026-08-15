@@ -44,10 +44,11 @@ After meaningful work, update the plan and any relevant documentation.
 
 ## Architecture Invariants
 
-- `commonMain` owns domain models, use cases, repository contracts, business rules, and shared utilities.
-- Shared data code owns API models, mapping, repository implementation, networking, and Room persistence wherever practical.
-- `androidMain` contains Android-specific code only when a platform API requires it.
-- `androidApp` owns Compose UI, Android ViewModels, navigation, and presentation wiring.
+- `sharedLogic/commonMain` owns domain models, repository contracts, business rules, shared utilities, and only meaningful use cases.
+- `sharedLogic/commonMain` owns API models, mapping, repository implementation, shared Ktor behavior, and Room entities/DAOs/database declarations wherever supported.
+- `sharedLogic/androidMain` / `sharedLogic/iosMain` contain only platform-specific engine and database construction required by those targets.
+- `androidApp` owns Compose screens, Android ViewModels, Navigation, durable UI state, one-shot UI effects, Coil, and application/composition wiring.
+- The existing `sharedUI` module is not part of the target architecture. Do not place new production presentation code there.
 - Domain code must not depend on presentation or infrastructure.
 - UI must never call Ktor, Room DAOs, or raw data sources directly.
 - Do not create God ViewModels, repositories, Activities, or Composables.
@@ -55,11 +56,12 @@ After meaningful work, update the plan and any relevant documentation.
 
 ## Offline-First Invariants
 
-Room is the source of truth for displayed article data.
+Room is the exclusive readable source of article data for higher layers.
+Network responses never feed UI directly; UI observes persisted data.
 
 Expected flow:
 
-`UI observes Room -> repository syncs remote -> successful response is persisted -> Room emits new data -> UI updates`
+`UI observes repository-backed Room data -> repository fetches remote -> validates/maps the full response -> transactionally replaces the snapshot -> Room emits -> UI updates`
 
 Rules:
 
@@ -67,8 +69,12 @@ Rules:
 - Refresh failure with cache is non-blocking.
 - No cache + failed remote/local load produces a meaningful error state.
 - Remote failure must never erase a usable cache.
+- Malformed/unusable remote data must never erase a usable cache.
+- A failed database replacement must leave the previous committed cache intact.
 - Empty successful data is distinct from failure.
 - Map infrastructure errors into clear domain-level outcomes.
+- Use a stable deterministic local article ID derived from the canonical article URL; preserve the canonical URL separately.
+- Navigation passes the stable ID, not the whole `Article`.
 
 ## Scope Decision
 
@@ -82,7 +88,7 @@ Do not implement these until core requirements and tests pass:
 - substantial UI animation/polish,
 - iOS UI application.
 
-A shared iOS KMP target is useful if it stays low-risk, but the required deliverable is the Android application.
+A shared iOS KMP target is useful only if it stays low-risk and its platform construction is complete. An iOS UI is not core scope, and the required deliverable is the Android application.
 
 ## Testing Rules
 
@@ -91,6 +97,8 @@ Required behavior is defined in `specs/testing.md`.
 Tests should verify observable behavior, not implementation details.
 
 Prefer fakes for deterministic repository/data-flow tests when practical. Use mocks only where they improve clarity.
+
+Required scenarios are T1-T5 in `specs/testing.md`. The documented cheap additions are useful regression coverage but must not become implementation blockers.
 
 Every bug fix affecting critical behavior should add or strengthen a regression test.
 
@@ -112,6 +120,7 @@ Use `plan/ai-usage-log.md` as the working log.
 
 - Never commit the real NewsAPI key.
 - Keep the key in a local-only property/configuration file.
+- Ensure the local secret file is explicitly ignored by Git.
 - Commit only an example file and README instructions.
 - Before submission, inspect git history as well as the working tree for leaked secrets.
 
