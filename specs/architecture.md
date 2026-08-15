@@ -82,12 +82,12 @@ Ktor API/DTO/mapping behavior is shared. Ktor engine construction is platform-sp
 Keep the public contract conceptually small:
 
 ```text
-observeArticles() -> Flow of persisted domain articles
-observeArticle(id) -> Flow of the persisted article or absence
+observeArticles() -> Flow of typed persisted-data outcome for domain articles
+observeArticle(id) -> Flow of typed persisted article, absence, or local failure
 refreshArticles() -> typed success/failure synchronization result
 ```
 
-The repository is the only boundary exposed to presentation. It maps infrastructure failures to domain-level errors and never exposes raw exceptions, API DTOs, or Room entities.
+The repository is the only boundary exposed to presentation. It maps infrastructure failures to domain-level errors and never exposes raw exceptions, API DTOs, or Room entities. A successful empty article observation is distinct from an observation failure; the latter is represented by the domain error vocabulary rather than an empty list or a thrown infrastructure exception.
 
 The article ID is a stable deterministic, collision-resistant value derived from the canonical article URL. The canonical URL is stored separately. Navigation passes the stable ID, never the whole `Article`.
 

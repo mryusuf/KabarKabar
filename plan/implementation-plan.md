@@ -22,18 +22,30 @@ The plan intentionally finishes core work before bonus work.
 `:androidApp:lintDebug :sharedLogic:check`, and `:sharedLogic:allTests` pass. The
 debug APK was installed on the `Pixel_9` emulator and `MainActivity` displayed
 the Phase 0 placeholder. `:androidApp:testDebugUnitTest` is currently
-`NO-SOURCE`; Android unit tests are intentionally deferred to later phases.
+`NO-SOURCE` at the Phase 0 checkpoint; Android unit tests were intentionally
+deferred to later phases and are now covered by the Phase 1 verification below.
 
 ## Phase 1 - Domain + Offline Contract
 
-- [ ] Define domain `Article` with canonical URL and stable deterministic URL-derived local ID.
-- [ ] Define domain error/result model without exposing infrastructure exceptions.
-- [ ] Define the small repository contract: `observeArticles()`, `observeArticle(id)`, `refreshArticles()`.
-- [ ] Define typed durable content states: Loading, Data, Empty, Error; keep refreshing orthogonal.
-- [ ] Define refresh/cache/empty semantics, including valid empty snapshots and failed replacement behavior.
-- [ ] Add use case(s) only where they add a meaningful domain/presentation boundary.
+- [x] Define domain `Article` with canonical URL and stable deterministic URL-derived local ID.
+- [x] Define domain error/result and typed observation models without exposing infrastructure exceptions.
+- [x] Define the small repository contract: `observeArticles()`, `observeArticle(id)`, `refreshArticles()`.
+- [x] Define typed durable content states: Loading, Data, Empty, Error; keep refreshing orthogonal.
+- [x] Define refresh/cache/empty semantics, including valid empty snapshots and failed replacement behavior.
+- [x] Confirm no pass-through use cases are needed at this boundary.
 
 **Exit:** dependency direction is clear before UI implementation.
+
+**Verification (15 August 2026):** Defined `ArticleId`, canonical URL validation,
+`EpochMilliseconds`, domain refresh/observation outcomes, and the repository
+contract in `sharedLogic/commonMain`. Defined `ArticleListUiState` and its
+typed `Loading`/`Data`/`Empty`/`Error` content states in `androidApp`. Regression
+tests cover ID determinism, ID mismatch rejection, empty-vs-failure semantics,
+and cached data remaining visible while refreshing. No pass-through use cases
+are needed at this stage. The clean verification command
+`./gradlew clean :sharedLogic:allTests :sharedLogic:assemble :sharedLogic:check
+:androidApp:testDebugUnitTest :androidApp:assembleDebug :androidApp:lintDebug`
+passes, including Android unit tests, both iOS framework targets, and lint.
 
 ## Phase 2 - Data Layer
 
@@ -43,7 +55,7 @@ the Phase 0 placeholder. `:androidApp:testDebugUnitTest` is currently
 - [ ] Repository implementation.
 - [ ] Validate/map the full remote response before transactionally replacing the cached headline snapshot.
 - [ ] Preserve the previous committed cache on remote, malformed-data, or database-replacement failure.
-- [ ] Define stable ID, canonical URL, duplicate, and ordering behavior.
+- [ ] Define duplicate and ordering behavior.
 
 **Exit:** repository can synchronize and expose persisted data.
 
