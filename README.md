@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: starter documentation. Replace placeholders and keep this README accurate as implementation progresses.
+> Status: Phase 0 scaffold and guardrails are complete. Phase 1 domain and offline contract work is next.
 
 ## Goal
 
@@ -107,29 +107,51 @@ Platform-specific code should stay minimal.
 
 Do **not** commit a real API key.
 
-Recommended local configuration:
-
-1. Put your development key in the `local.properties`:
+Configure the root `local.properties` file, which is ignored by Git:
 
 ```properties
+sdk.dir=/absolute/path/to/your/Android/sdk
 NEWS_API_KEY=your_real_development_key
 ```
 
-2. Ensure `local.properties` is ignored by Git.
-3. Wire the value into the build/runtime configuration without placing the secret in source code.
+`androidApp/build.gradle.kts` reads `NEWS_API_KEY` locally and exposes it as
+`BuildConfig.NEWS_API_KEY` for the future application composition root. The
+Phase 0 placeholder does not make a network request.
 
-Document the final mechanism here once implemented.
+The key must be treated as public client configuration: Android packages can be
+inspected. Never log it, put it in shared domain state, or commit it to source
+control. The repository contains only the setup instructions above.
 
 ## Build & Run
 
-Add exact clean-checkout commands after the Gradle module names are finalized.
+Run these commands from the repository root after configuring `local.properties`:
 
-Expected final documentation should include commands for:
+```bash
+# Clean build of the Android app and shared KMP module.
+./gradlew clean :androidApp:assembleDebug :sharedLogic:assemble
 
-- building the Android app,
-- running unit tests,
-- running Compose UI tests,
-- any shared/common tests.
+# Incremental Android debug build.
+./gradlew :androidApp:assembleDebug
+
+# Android unit task plus shared KMP tests.
+./gradlew :androidApp:testDebugUnitTest :sharedLogic:allTests
+
+# Static verification used by the Phase 0 gate.
+./gradlew :androidApp:lintDebug :sharedLogic:check
+
+# Compose/instrumentation tests; requires an attached emulator or device.
+./gradlew :androidApp:connectedDebugAndroidTest
+```
+
+There are no Android unit or Compose UI test sources yet; their Gradle tasks
+are documented now and will become meaningful in the later testing phases.
+
+To manually verify the current placeholder on a connected device:
+
+```bash
+adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk
+adb shell am start -n io.mryusuf.kabarkabar/.MainActivity
+```
 
 ## Offline-First Decisions
 
@@ -170,9 +192,9 @@ Do not fabricate this section. Populate it from `plan/ai-usage-log.md` after the
 
 | Task | Prompt/Goal | Agent Output | What I Changed or Rejected | Validation |
 |---|---|---|---|---|
-| 1 | TBD | TBD | TBD | TBD |
-| 2 | TBD | TBD | TBD | TBD |
-| 3 | TBD | TBD | TBD | TBD |
+| 1 | Phase 0 scaffold, module ownership, dependencies, and API-key setup | See `plan/ai-usage-log.md` Entry 1 | Corrected generated Gradle accessor usage and deferred incompatible MockK test wiring | Independent verification: clean assemble, lint/check, and Pixel 9 placeholder launch; Android unit task is currently `NO-SOURCE` |
+| 2 | Pending an actual meaningful Android Studio Agent Mode task | Not performed yet | No claim recorded | Pending |
+| 3 | Pending an actual meaningful Android Studio Agent Mode task | Not performed yet | No claim recorded | Pending |
 
 At least one final entry must describe a real AI-generated mistake/suboptimal approach and how it was corrected.
 

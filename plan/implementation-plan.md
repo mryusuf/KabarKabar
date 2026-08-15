@@ -6,17 +6,23 @@ The plan intentionally finishes core work before bonus work.
 
 ## Phase 0 - Scaffold and Guardrails
 
-- [ ] Create KMP project + Android app.
-- [ ] Finalize target ownership: `sharedLogic` for shared domain/data and `androidApp` for all Android presentation/wiring.
-- [ ] Keep the existing `sharedUI` scaffold out of the target architecture; do not add new production code there.
-- [ ] Keep iOS UI out of core scope; retain an iOS shared target only if its platform construction remains low-risk and complete.
-- [ ] Add non-negotiable dependencies.
-- [ ] Add local API-key configuration and `.gitignore`.
-- [ ] Confirm clean build.
-- [ ] Confirm Android app launches.
-- [ ] Update README with exact build commands.
+- [x] Create KMP project + Android app.
+- [x] Finalize target ownership: `sharedLogic` for shared domain/data and `androidApp` for all Android presentation/wiring.
+- [x] Keep the existing `sharedUI` scaffold out of the target architecture; do not add new production code there.
+- [x] Keep iOS UI out of core scope; retain an iOS shared target only if its platform construction remains low-risk and complete.
+- [x] Add non-negotiable dependencies.
+- [x] Add local API-key configuration and `.gitignore`.
+- [x] Confirm clean build.
+- [x] Confirm Android app launches.
+- [x] Update README with exact build commands.
 
 **Exit:** clean build + empty app + no secret in source.
+
+**Verification (15 August 2026):** `clean :androidApp:assembleDebug :sharedLogic:assemble`,
+`:androidApp:lintDebug :sharedLogic:check`, and `:sharedLogic:allTests` pass. The
+debug APK was installed on the `Pixel_9` emulator and `MainActivity` displayed
+the Phase 0 placeholder. `:androidApp:testDebugUnitTest` is currently
+`NO-SOURCE`; Android unit tests are intentionally deferred to later phases.
 
 ## Phase 1 - Domain + Offline Contract
 
