@@ -40,25 +40,33 @@ N/A (Phase 0 Baseline)
 ## Entry 2
 
 **Task/category:**  
-TBD
+Phase 2: Data Layer (Infrastructure & Repository)
 
 **Prompt / context given to Agent Mode:**  
-TBD
+Implement the shared remote and local infrastructure (Phase 2A) and the offline-first ArticleRepository (Phase 2B). This includes NewsAPI DTOs, Ktor client with redacted logging, Room KMP database/entities/DAOs, and the synchronization logic that preserves cache on failure.
 
 **What the agent produced:**  
-TBD
+Created `NewsApiClient.kt`, `ArticleEntity.kt`, `ArticleDao.kt`, `AppDatabase.kt`, `ArticleMapper.kt`, `RemoteArticleDataSource.kt`, `LocalArticleDataSource.kt`, and `OfflineFirstArticleRepository.kt`. Implemented repository unit tests.
 
 **My review:**  
-TBD
+The agent established a clean cross-layer infrastructure and correctly implemented the "Room as exclusive read source" invariant. The use of a `Mutex` in the repository ensures concurrent refreshes are handled safely.
 
 **What I changed or rejected, and why:**  
-TBD
+The Phase 2 Agent Mode review identified and corrected the following
+suboptimal choices/mistakes before this Codex review:
+1. **Mapping Logic Error**: During the Phase 2A safety check, the Agent Mode work identified that `ArticleMapper` initially didn't distinguish between a legitimate empty response and a malformed-data failure. The Phase 2 correction introduced `ArticleMappingResult` so the repository can decide whether to replace the cache or preserve it.
+2. **Missing Test Dependencies**: The agent initially forgot to add `kotlinx-coroutines-test` to the project's dependency catalog and build scripts, which caused repository tests to fail. The Phase 2 correction added the library to `libs.versions.toml` and `sharedLogic/build.gradle.kts`.
+3. **Room KMP configuration**: The Phase 2 work adjusted the `@ConstructedBy` and `AppDatabaseConstructor` pattern to align with Room 2.7.0+ KMP requirements after identifying generated-source conflicts.
 
 **Validation performed:**  
-TBD
+The Phase 2 Agent Mode checkpoint recorded `./gradlew :sharedLogic:allTests`
+with 19 passing tests, confirmed malformed remote data preserves the cache, and
+reviewed API-key redaction. The stronger targeted redaction regression test and
+the clean end-to-end gate were run during this Codex review and are not claimed
+as Agent Mode evidence.
 
 **Commit / PR (optional):**  
-TBD
+N/A (Phase 2 Complete)
 
 ---
 
@@ -92,9 +100,18 @@ TBD
 
 ## Evidence status
 
-Only Entry 1 has been recorded so far. Entries 2 and 3 intentionally remain
-pending until those meaningful Android Studio Agent Mode tasks actually happen;
-Codex work is not counted as Agent Mode evidence.
+Entries 1 and 2 are recorded above. Entry 2 is a meaningful Android Studio
+Agent Mode data-layer task and includes the documented empty-vs-malformed
+mapper correction, dependency correction, and Room constructor correction.
+Entry 3 remains pending until another meaningful Android Studio Agent Mode task
+actually happens; Codex review/remediation work is not counted as Agent Mode
+evidence.
+
+The mapper correction is supported by the Phase 2 artifact available at the
+start of this Codex review: the earlier indexed mapper returned a plain article
+list, while the pre-review working-tree version introduced the explicit
+success/malformed result needed to preserve the empty-vs-malformed distinction.
+No additional AI mistake is being claimed here.
 
 ## Good Candidate Tasks
 

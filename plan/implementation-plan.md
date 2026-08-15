@@ -49,15 +49,37 @@ passes, including Android unit tests, both iOS framework targets, and lint.
 
 ## Phase 2 - Data Layer
 
-- [ ] NewsAPI DTOs and explicit mapping.
-- [ ] Ktor shared API behavior with platform-specific engine construction, injected configuration, and redacted logging.
-- [ ] Room KMP database/entity/DAO with one DI-owned instance, platform builders, and checked-in schema output.
-- [ ] Repository implementation.
-- [ ] Validate/map the full remote response before transactionally replacing the cached headline snapshot.
-- [ ] Preserve the previous committed cache on remote, malformed-data, or database-replacement failure.
-- [ ] Define duplicate and ordering behavior.
+- [x] Phase 2A: Shared Infrastructure (Ktor, Room, Mappings, Platform Builders).
+- [x] Phase 2B: Repository implementation and offline-first synchronization.
+- [x] NewsAPI DTOs and explicit mapping.
+- [x] Ktor shared API behavior with platform-specific engine construction, injected configuration, and redacted logging.
+- [x] Room KMP database/entity/DAO with one DI-owned instance, platform builders, and checked-in schema output.
+- [x] Repository implementation.
+- [x] Validate/map the full remote response before transactionally replacing the cached headline snapshot.
+- [x] Preserve the previous committed cache on remote, malformed-data, or database-replacement failure.
+- [x] Define duplicate and ordering behavior.
 
 **Exit:** repository can synchronize and expose persisted data.
+
+**Review verification (15 August 2026):** End-to-end Phase 2 review fixed
+timestamp parsing, NewsAPI envelope/error validation, persistence error
+classification, local observation exception containment, entity identity
+validation, duplicate resolution, and the iOS Room builder. The Room schema
+output is present under `sharedLogic/schemas`. Shared tests pass
+with 35 Android host-test cases and 36 iOS simulator-test cases; both iOS
+device/simulator framework targets compile and link. The clean verification
+command below also passes, including Android unit tests (4 cases), debug
+assemble, and lint. Phase 3 remains intentionally unchecked.
+
+```text
+./gradlew clean \
+  :sharedLogic:allTests \
+  :sharedLogic:assemble \
+  :sharedLogic:check \
+  :androidApp:testDebugUnitTest \
+  :androidApp:assembleDebug \
+  :androidApp:lintDebug
+```
 
 ## Phase 3 - Write Critical Unit Tests Early
 
