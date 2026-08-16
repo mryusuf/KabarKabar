@@ -83,11 +83,28 @@ assemble, and lint. Phase 3 remains intentionally unchecked.
 
 ## Phase 3 - Write Critical Unit Tests Early
 
-- [ ] T1 fetch -> map -> persist -> expose.
-- [ ] T2 remote failure -> cached data survives.
-- [ ] T3 remote + local unavailable -> relevant error.
-- [ ] Add only the cheap high-value checks documented in `specs/testing.md` as time permits; do not make them blockers.
-- [ ] Fix architecture issues exposed by tests.
+- [x] T1 fetch -> map -> persist -> expose.
+- [x] T2 remote failure -> cached data survives.
+- [x] T3 remote + local unavailable -> relevant error.
+- [x] Add only the cheap high-value checks documented in `specs/testing.md` as time permits; do not make them blockers.
+- [x] Fix architecture issues exposed by tests.
+
+**Verification (16 August 2026):** T1 now verifies the remote boundary is
+called, the fake local boundary contains the committed entity snapshot, and
+the repository exposes that snapshot as a domain article with stable identity,
+publication time, and optional fields preserved. T2 verifies the domain
+observation is unchanged after a classified network failure. T3 verifies the
+intentional Phase 1 contract: an empty local observation remains
+`ArticleObservation.Data(emptyList())`, while the failed initial synchronization
+is `RefreshResult.Failure(SyncError.Network)`. These two outcomes are the
+inputs Phase 4 presentation code must combine to derive the required blocking
+`Error` state; a successful empty synchronization remains distinguishable by
+`RefreshResult.Success` and is covered by the Phase 2 regression suite. No
+production code or Phase 4 work was added in this review.
+
+The clean verification gate passed with 38 Android shared tests, 39 iOS
+shared tests, and 4 Android application unit tests; shared assemble/check,
+both iOS framework links, Android debug assemble, and Android lint also passed.
 
 **Exit:** all required unit/shared tests green.
 

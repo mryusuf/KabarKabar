@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phase 0 scaffold and guardrails are complete. Phase 1 domain and offline contract work is next.
+> Status: Phases 0–3 are complete, including the T1–T3 offline-first acceptance tests. Phase 4 presentation work has not started.
 
 ## Goal
 
@@ -116,7 +116,9 @@ NEWS_API_KEY=your_real_development_key
 
 `androidApp/build.gradle.kts` reads `NEWS_API_KEY` locally and exposes it as
 `BuildConfig.NEWS_API_KEY` for the future application composition root. The
-Phase 0 placeholder does not make a network request.
+current Android entry point remains the Phase 0 placeholder and does not make
+a network request; the shared Phase 1–3 domain/data behavior is covered by
+shared tests.
 
 The key must be treated as public client configuration: Android packages can be
 inspected. Never log it, put it in shared domain state, or commit it to source
@@ -136,15 +138,16 @@ Run these commands from the repository root after configuring `local.properties`
 # Android unit task plus shared KMP tests.
 ./gradlew :androidApp:testDebugUnitTest :sharedLogic:allTests
 
-# Static verification used by the Phase 0 gate.
+# Static verification.
 ./gradlew :androidApp:lintDebug :sharedLogic:check
 
 # Compose/instrumentation tests; requires an attached emulator or device.
 ./gradlew :androidApp:connectedDebugAndroidTest
 ```
 
-There are no Android unit or Compose UI test sources yet; their Gradle tasks
-are documented now and will become meaningful in the later testing phases.
+The Android unit task currently runs 4 `ArticleListUiStateTest` cases. Compose
+UI test sources are not added yet because Phase 4 presentation and Phase 5 UI
+testing remain incomplete.
 
 To manually verify the current placeholder on a connected device:
 
@@ -166,13 +169,19 @@ adb shell am start -n io.mryusuf.kabarkabar/.MainActivity
 - A refresh failure with cache is shown as a non-blocking message.
 - No cache + no usable remote/local data becomes an explicit error state.
 
-Durable content uses typed Loading, Data, Empty, and Error states. Refreshing is orthogonal to content availability, and one-shot Snackbar/effect messages are not persistent nullable StateFlow data.
+Durable content uses typed Loading, Data, Empty, and Error states. Refreshing is orthogonal to content availability, and one-shot Snackbar/effect messages are not persistent nullable StateFlow data. At the repository boundary, a failed initial refresh is returned as `RefreshResult.Failure` while an empty local snapshot remains `ArticleObservation.Data(emptyList())`; Phase 4 must combine those outcomes to derive the blocking Error state, while `RefreshResult.Success` distinguishes a legitimate successful empty snapshot.
 
 See `specs/architecture.md`.
 
 ## Testing
 
 Required behavior and test scenarios are tracked in `specs/testing.md`.
+
+Phase 3 acceptance coverage is green: T1 fetches, maps, persists, and exposes
+an article; T2 preserves an existing cache after a network failure; and T3
+returns a classified failure alongside an empty local observation when no
+usable cache exists. The detailed evidence is in
+`plan/implementation-plan.md` and `plan/ai-usage-log.md`.
 
 The test suite must cover at least:
 
@@ -188,13 +197,14 @@ Cheap high-value additions such as cache visibility during refresh, valid empty 
 
 The assessment requires at least **three meaningful tasks performed with Android Studio Agent Mode**.
 
-Do not fabricate this section. Populate it from `plan/ai-usage-log.md` after the tasks actually happen.
+This table reflects the actual tasks recorded in `plan/ai-usage-log.md`; Codex
+review/remediation is kept separate from Agent Mode evidence.
 
 | Task | Prompt/Goal | Agent Output | What I Changed or Rejected | Validation |
 |---|---|---|---|---|
-| 1 | Phase 0 scaffold, module ownership, dependencies, and API-key setup | See `plan/ai-usage-log.md` Entry 1 | Corrected generated Gradle accessor usage and deferred incompatible MockK test wiring | Independent verification: clean assemble, lint/check, and Pixel 9 placeholder launch; Android unit task is currently `NO-SOURCE` |
-| 2 | Pending an actual meaningful Android Studio Agent Mode task | Not performed yet | No claim recorded | Pending |
-| 3 | Pending an actual meaningful Android Studio Agent Mode task | Not performed yet | No claim recorded | Pending |
+| 1 | Phase 0 scaffold, module ownership, dependencies, and API-key setup | See `plan/ai-usage-log.md` Entry 1 | Corrected generated Gradle accessor usage and deferred incompatible MockK test wiring | Phase 0 verification included clean assemble, lint/check, and Pixel 9 placeholder launch; the Android unit task was `NO-SOURCE` at that checkpoint |
+| 2 | Phase 2 shared infrastructure and offline-first repository | See `plan/ai-usage-log.md` Entry 2 | Corrected the empty-vs-malformed mapper semantics, test dependency wiring, and Room constructor setup | Phase 2 checkpoint and later independent regression verification are recorded in Entry 2 |
+| 3 | Phase 3 T1–T3 offline-first acceptance tests | See `plan/ai-usage-log.md` Entry 3 | Agent Mode corrected minor compile-time test issues; Codex review separately strengthened persistence and optional-field assertions | `:sharedLogic:allTests`: 38 Android shared tests and 39 iOS shared tests |
 
 At least one final entry must describe a real AI-generated mistake/suboptimal approach and how it was corrected.
 
@@ -238,6 +248,6 @@ Populate honestly before submission.
 - [ ] Required tests pass
 - [ ] README setup instructions verified on a clean state
 - [ ] Architecture and trade-offs documented
-- [ ] 3+ Android Studio Agent Mode tasks documented
-- [ ] At least 1 real AI mistake/correction documented
+- [x] 3+ Android Studio Agent Mode tasks documented
+- [x] At least 1 real AI mistake/correction documented
 - [ ] Known issues stated explicitly

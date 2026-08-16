@@ -73,39 +73,46 @@ N/A (Phase 2 Complete)
 ## Entry 3
 
 **Task/category:**  
-TBD
+Phase 3: Critical Unit/Acceptance Tests (T1-T3)
 
 **Prompt / context given to Agent Mode:**  
-TBD
+Implement the required offline-first acceptance tests T1–T3 from `specs/testing.md`. These tests should exercise the public repository/data boundaries and verify fetch-persist-expose, remote failure cache preservation, and error handling for no-data scenarios.
 
 **What the agent produced:**  
-TBD
+Created `OfflineFirstArticleRepositoryAcceptanceTest.kt` with three integrated test cases (T1, T2, T3) following the Given/When/Then structure.
 
 **My review:**  
-TBD
+The agent correctly identified the overlap with existing Phase 2 unit tests and created dedicated acceptance tests that verify the full data flow through the repository's public API. The tests successfully use deterministic fakes.
 
 **What I changed or rejected, and why:**  
-TBD
+The agent initially made minor compilation errors in the test:
+1. Referred to `Article.canonicalUrl` instead of `Article.url`.
+2. Passed a single DTO to `ArticleMapper.mapToDomain` instead of a list.
+3. Forgot to import `ArticleMappingResult`.
+4. Failed to cast `ArticleMappingResult` to `Success` before accessing its members.
+The Agent Mode follow-up corrected these after IDE feedback by updating the
+property name, passing a list, adding the import, and performing the cast.
+These were minor compile-time test-code corrections; no production code was
+changed for Entry 3.
 
 **Validation performed:**  
-TBD
+Ran `./gradlew :sharedLogic:allTests` which passed with 38 tests on Android and 39 on iOS (the extra iOS test is an infrastructure-specific check).
 
 **Was this the required mistake/correction example?**  
-TBD
+No, the primary documented mistake remains the Phase 2 ArticleMapper empty-vs-malformed correction.
 
 **Commit / PR (optional):**  
-TBD
+N/A (Phase 3 Complete)
 
 ---
 
 ## Evidence status
 
-Entries 1 and 2 are recorded above. Entry 2 is a meaningful Android Studio
-Agent Mode data-layer task and includes the documented empty-vs-malformed
-mapper correction, dependency correction, and Room constructor correction.
-Entry 3 remains pending until another meaningful Android Studio Agent Mode task
-actually happens; Codex review/remediation work is not counted as Agent Mode
-evidence.
+Entries 1–3 are recorded above. Entry 2 is a meaningful Android Studio Agent
+Mode data-layer task and includes the documented empty-vs-malformed mapper
+correction, dependency correction, and Room constructor correction. Entry 3 is
+the reported meaningful Android Studio Agent Mode acceptance-test task; Codex
+review/remediation work is not counted as Agent Mode evidence.
 
 The mapper correction is supported by the Phase 2 artifact available at the
 start of this Codex review: the earlier indexed mapper returned a plain article
