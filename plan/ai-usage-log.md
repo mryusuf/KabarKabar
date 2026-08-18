@@ -106,9 +106,69 @@ N/A (Phase 3 Complete)
 
 ---
 
+## Entry 4
+
+**Task/category:**
+Phase 4A: Presentation State Orchestration & ViewModel
+
+**Prompt / context given to Agent Mode:**
+Implement the smallest Android-owned presentation layer that converts the existing repository contracts into the approved `ArticleListUiState` semantics. Handle initial load, refresh, and non-blocking errors. Implement unit tests (V1-V5) using a fake repository.
+
+**What the agent produced:**
+Created `ArticleListViewModel`, `ArticleListUiEvent`, Koin `AppModule`, `KabarKabarApp` Application class, and `ArticleListViewModelTest`.
+
+**My review:**
+The agent correctly implemented the orchestration of `observeArticles()` and `refreshArticles()`. It used `StateFlow` with `combine` to derive the UI state and a `SharedFlow` for one-shot events. The DI setup was added as it was missing in the code.
+
+**What I changed or rejected, and why:**
+Identified a semantic mistake: The initial `combine` logic in the ViewModel didn't correctly distinguish between "Initial Loading" and "Blocking Error" when the cache was empty and the initial synchronization failed. The agent initially relied solely on the repository's `ArticleObservation`, but an empty observation is just `Data(emptyList())` and doesn't communicate that a sync failure occurred. I corrected this by introducing a `lastSyncError` StateFlow to track the sync result and using it in the `combine` block to transition to `ArticleListContent.Error` when the cache is empty.
+
+**Subsequent independent review note (not Agent Mode evidence):**
+The Phase 4A review found additional semantic defects in the generated orchestration: cache classification depended on the exposed StateFlow's subscription timing, refresh calls could duplicate before coroutine scheduling, default `SharedFlow` delivery could lose a late snackbar collector, and a later local observation failure hid previously displayed data. Codex added deterministic regressions and corrected these behaviors, plus completed the missing application-scoped repository DI graph.
+
+**Validation performed:**
+The Agent Mode checkpoint ran `:androidApp:testDebugUnitTest` with 9 tests, including V1-V5, and reported the shared build/check/assemble/lint tasks green. The independent review first reproduced three defects with failing tests, then ran the corrected focused task with 15 passing tests. The final clean verification gate is recorded after completion of this review.
+
+**Commit / PR (optional):**
+N/A (Phase 4A reviewed/remediated; Phase 4B pending)
+
+---
+
+## Entry 5
+
+**Task/category:**
+Phase 4B: Android Compose UI & Navigation
+
+**Prompt / context given to Agent Mode:**
+Implement the Android Compose UI, Navigation, article detail flow, image loading via Coil, and pull-to-refresh. Ensure the UI respects the offline-first invariants and uses the existing `ArticleListViewModel`. Pass only the stable `ArticleId` between screens and resolve data from the repository in the detail screen.
+
+**What the agent produced:**
+Created `ArticleListScreen`, `ArticleRow`, `ArticleDetailScreen`, `ArticleDetailViewModel`, `KabarKabarNavGraph`, and `DateFormatter`. Updated `MainActivity` and `AppModule`.
+
+**My review:**
+The agent successfully built the UI screens and connected them using Navigation Compose. The pull-to-refresh was correctly bound to the ViewModel. Image loading via Coil was integrated into both list and detail screens.
+
+**What I changed or rejected, and why:**
+Identified a real mistake: The initial navigation implementation used `ArticleId` directly in the route (e.g., `article_detail/{articleId}`). Since `ArticleId` contains a full URL with slashes, this broke the navigation graph as the slashes were interpreted as path separators, causing a `java.lang.IllegalArgumentException` at runtime. I corrected this by implementing `URLEncoder` and `URLDecoder` in `KabarKabarNavGraph` to safely pass the ID as a single path segment.
+
+The first Phase 4B image attempt also failed at runtime because Coil 3 does not include network fetching by default and the application-level ImageLoader/network integration was incomplete. The follow-up remediation added `coil-network-ktor3` and configured the application singleton with `KtorNetworkFetcherFactory`. Runtime checks on the Pixel 9 emulator then verified list and detail image loading. This entry records the actual Gemini-assisted debugging/remediation; the independent static/runtime review and any fixes in this review are not attributed to Agent Mode.
+
+The whole-Phase-4 Codex review later added separate regression coverage for
+presentation-safe detail errors, stable detail-state collection, and the
+Navigation Compose percent-encoded ID boundary. Those changes are independent
+review work and are not Agent Mode evidence.
+
+**Validation performed:**
+Ran `./gradlew :androidApp:assembleDebug` and performed manual verification on a Pixel 9 emulator (R1-R8). Verified that tapping an article now correctly navigates to the detail screen without crashing, and that back navigation works as expected.
+
+**Commit / PR (optional):**
+N/A (Phase 4B Complete)
+
+---
+
 ## Evidence status
 
-Entries 1–3 are recorded above. Entry 2 is a meaningful Android Studio Agent
+Entries 1–5 are recorded above. Entry 2 is a meaningful Android Studio Agent
 Mode data-layer task and includes the documented empty-vs-malformed mapper
 correction, dependency correction, and Room constructor correction. Entry 3 is
 the reported meaningful Android Studio Agent Mode acceptance-test task; Codex

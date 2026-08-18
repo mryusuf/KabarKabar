@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phases 0–3 are complete, including the T1–T3 offline-first acceptance tests. Phase 4 presentation work has not started.
+> Status: Phases 0–4 presentation and runtime review are complete. Phase 5 Compose UI acceptance tests remain pending.
 
 ## Goal
 
@@ -17,17 +17,17 @@ Demonstrate:
 
 ## Planned Core Features
 
-- [ ] Article list: title, short description, image, publication date
-- [ ] Pull-to-refresh
-- [ ] Article detail screen
-- [ ] Loading state
-- [ ] Empty state
-- [ ] Cached content displayed when offline
-- [ ] Cached content remains visible after refresh failure
-- [ ] Non-blocking refresh error when cache exists
-- [ ] Clear error state when neither remote nor local data is usable
-- [ ] System back + app-bar back navigation
-- [ ] Required unit tests
+- [x] Article list: title, short description, image, publication date
+- [x] Pull-to-refresh
+- [x] Article detail screen
+- [x] Loading state
+- [x] Empty state
+- [x] Cached content displayed when offline
+- [x] Cached content remains visible after refresh failure
+- [x] Non-blocking refresh error when cache exists
+- [x] Clear error state when neither remote nor local data is usable
+- [x] System back + app-bar back navigation
+- [x] Required unit tests
 - [ ] Required Compose UI tests
 
 ## Tech Stack
@@ -115,14 +115,23 @@ NEWS_API_KEY=your_real_development_key
 ```
 
 `androidApp/build.gradle.kts` reads `NEWS_API_KEY` locally and exposes it as
-`BuildConfig.NEWS_API_KEY` for the future application composition root. The
-current Android entry point remains the Phase 0 placeholder and does not make
-a network request; the shared Phase 1–3 domain/data behavior is covered by
-shared tests.
+`BuildConfig.NEWS_API_KEY` for the application composition root. The Android
+application composes the Phase 4 ViewModels, Room-backed repository, and
+Navigation/Coil presentation flow. The shared Phase 1–3 domain/data behavior
+is covered by shared tests.
 
 The key must be treated as public client configuration: Android packages can be
 inspected. Never log it, put it in shared domain state, or commit it to source
 control. The repository contains only the setup instructions above.
+
+### Submission country decision
+
+The take-home PDF used `country=id` as a sample. During development it returned
+no current articles, so Inosoft was contacted and explicitly approved
+`country=us`, currently the only country returning non-empty data. The
+submitted app therefore configures `us` so the complete online/offline flow can
+be demonstrated. A country selector and automatic country fallback remain out
+of scope; empty-state coverage uses deterministic test data.
 
 ## Build & Run
 
@@ -145,11 +154,12 @@ Run these commands from the repository root after configuring `local.properties`
 ./gradlew :androidApp:connectedDebugAndroidTest
 ```
 
-The Android unit task currently runs 4 `ArticleListUiStateTest` cases. Compose
-UI test sources are not added yet because Phase 4 presentation and Phase 5 UI
-testing remain incomplete.
+The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 10
+`ArticleListViewModelTest` cases, 2 `ArticleDetailViewModelTest` cases, and 1
+navigation boundary test (18 total). Compose UI test sources are intentionally
+not added yet because they belong to Phase 5.
 
-To manually verify the current placeholder on a connected device:
+To manually verify the current Android application on a connected device:
 
 ```bash
 adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk
@@ -169,7 +179,7 @@ adb shell am start -n io.mryusuf.kabarkabar/.MainActivity
 - A refresh failure with cache is shown as a non-blocking message.
 - No cache + no usable remote/local data becomes an explicit error state.
 
-Durable content uses typed Loading, Data, Empty, and Error states. Refreshing is orthogonal to content availability, and one-shot Snackbar/effect messages are not persistent nullable StateFlow data. At the repository boundary, a failed initial refresh is returned as `RefreshResult.Failure` while an empty local snapshot remains `ArticleObservation.Data(emptyList())`; Phase 4 must combine those outcomes to derive the blocking Error state, while `RefreshResult.Success` distinguishes a legitimate successful empty snapshot.
+Durable content uses typed Loading, Data, Empty, and Error states. Refreshing is orthogonal to content availability, and one-shot Snackbar/effect messages are not persistent nullable StateFlow data. At the repository boundary, a failed initial refresh is returned as `RefreshResult.Failure` while an empty local snapshot remains `ArticleObservation.Data(emptyList())`; Phase 4 combines those outcomes to derive the blocking Error state, while `RefreshResult.Success` distinguishes a legitimate successful empty snapshot. Compose rendering and navigation are complete; formal UI acceptance remains Phase 5.
 
 See `specs/architecture.md`.
 
@@ -205,6 +215,8 @@ review/remediation is kept separate from Agent Mode evidence.
 | 1 | Phase 0 scaffold, module ownership, dependencies, and API-key setup | See `plan/ai-usage-log.md` Entry 1 | Corrected generated Gradle accessor usage and deferred incompatible MockK test wiring | Phase 0 verification included clean assemble, lint/check, and Pixel 9 placeholder launch; the Android unit task was `NO-SOURCE` at that checkpoint |
 | 2 | Phase 2 shared infrastructure and offline-first repository | See `plan/ai-usage-log.md` Entry 2 | Corrected the empty-vs-malformed mapper semantics, test dependency wiring, and Room constructor setup | Phase 2 checkpoint and later independent regression verification are recorded in Entry 2 |
 | 3 | Phase 3 T1–T3 offline-first acceptance tests | See `plan/ai-usage-log.md` Entry 3 | Agent Mode corrected minor compile-time test issues; Codex review separately strengthened persistence and optional-field assertions | `:sharedLogic:allTests`: 38 Android shared tests and 39 iOS shared tests |
+| 4 | Phase 4A ViewModel state orchestration and presentation tests | See `plan/ai-usage-log.md` Entry 4 | Agent Mode corrected the initial empty-vs-failed-sync state distinction; the later independent Codex review/remediation is not Agent Mode evidence | `:androidApp:testDebugUnitTest`: 15 cases after remediation |
+| 5 | Phase 4B Compose screens, navigation, pull-to-refresh, and Coil image loading | See `plan/ai-usage-log.md` Entry 5 | Gemini-assisted image debugging recorded the missing Coil 3 network integration and singleton ImageLoader correction; independent review fixes remain separate | Debug assemble plus Pixel 9 exploratory runtime checks |
 
 At least one final entry must describe a real AI-generated mistake/suboptimal approach and how it was corrected.
 

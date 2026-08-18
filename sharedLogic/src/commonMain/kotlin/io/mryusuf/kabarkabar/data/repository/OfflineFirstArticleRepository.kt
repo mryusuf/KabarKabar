@@ -30,6 +30,7 @@ import kotlinx.serialization.SerializationException
 class OfflineFirstArticleRepository(
     private val remoteDataSource: RemoteArticleDataSource,
     private val localDataSource: LocalArticleDataSource,
+    private val country: String,
 ) : ArticleRepository {
 
     private val refreshMutex = Mutex()
@@ -67,7 +68,7 @@ class OfflineFirstArticleRepository(
     override suspend fun refreshArticles(): RefreshResult {
         return refreshMutex.withLock {
             val remoteResponse = try {
-                remoteDataSource.fetchTopHeadlines(country = "id")
+                remoteDataSource.fetchTopHeadlines(country = country)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 return@withLock RefreshResult.Failure(mapToSyncError(e))

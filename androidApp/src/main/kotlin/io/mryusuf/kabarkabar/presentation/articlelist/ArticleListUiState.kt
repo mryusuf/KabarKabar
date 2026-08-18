@@ -32,4 +32,10 @@ enum class ArticleListUiError {
 data class ArticleListUiState(
     val content: ArticleListContent = ArticleListContent.Loading,
     val isRefreshing: Boolean = false,
-)
+) {
+    init {
+        require(!isRefreshing || content is ArticleListContent.Data) {
+            "Only displayed article data can be marked as refreshing"
+        }
+    }
+}

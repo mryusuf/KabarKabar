@@ -5,5 +5,6 @@ package io.mryusuf.kabarkabar.data.remote.api
  */
 interface NewsApiConfig {
     val apiKey: String
+    val country: String
     val baseUrl: String get() = "https://newsapi.org"
 }

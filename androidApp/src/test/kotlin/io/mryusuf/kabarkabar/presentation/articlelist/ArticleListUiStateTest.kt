@@ -47,6 +47,16 @@ class ArticleListUiStateTest {
     }
 
     @Test
+    fun refreshing_cannot_be_combined_with_non_data_content() {
+        assertThrows(IllegalArgumentException::class.java) {
+            ArticleListUiState(
+                content = ArticleListContent.Loading,
+                isRefreshing = true,
+            )
+        }
+    }
+
+    @Test
     fun empty_and_error_are_distinct_content_states() {
         val empty = ArticleListContent.Empty
         val error = ArticleListContent.Error(ArticleListUiError.NetworkUnavailable)

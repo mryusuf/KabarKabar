@@ -4,6 +4,15 @@
 
 Build a two-screen News Reader using NewsAPI.
 
+### Accepted NewsAPI country clarification
+
+The take-home PDF used `country=id` as a sample request. During development it
+returned no current articles. Inosoft explicitly approved using `country=us`,
+currently the only country returning non-empty data, for the submitted app.
+The country selector and automatic fallback are optional future scope and are
+not required for this phase. Empty-result behavior remains covered by
+deterministic tests rather than a live country response.
+
 ### Article List
 
 Must:

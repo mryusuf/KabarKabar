@@ -110,19 +110,55 @@ both iOS framework links, Android debug assemble, and Android lint also passed.
 
 ## Phase 4 - Presentation
 
-- [ ] Article list UI in `androidApp`.
-- [ ] Android ViewModel + StateFlow with typed durable content state and one-shot effects.
-- [ ] Initial loading.
-- [ ] Cached-content state.
-- [ ] Pull-to-refresh.
-- [ ] Non-blocking refresh failure.
-- [ ] Empty state.
-- [ ] Blocking no-data error.
-- [ ] Article detail.
-- [ ] Navigation by stable article ID + both back paths.
-- [ ] Coil image loading.
+### Phase 4A - Article list presentation state and orchestration
 
-**Exit:** all core flows work manually online and offline.
+- [x] Article list presentation state in `androidApp` (Compose screen remains Phase 4B).
+- [x] Android ViewModel + StateFlow with typed durable content state and one-shot effects.
+- [x] Initial loading.
+- [x] Cached-content state.
+- [x] Refresh orchestration for the future pull-to-refresh UI trigger.
+- [x] Non-blocking refresh failure.
+- [x] Empty state.
+- [x] Blocking no-data error.
+
+### Phase 4B - Compose article flows
+
+- [x] Article list Compose screen and pull-to-refresh UI.
+- [x] Article detail.
+- [x] Navigation by stable article ID + both back paths.
+- [x] Coil image loading.
+
+**Phase 4A review verification (17 August 2026):** The ViewModel tests cover
+V1–V5 plus deterministic regressions for late UI subscription, duplicate
+refresh calls, local observation failure with and without cache, and
+cancellation. The Android application test task passes 15 cases (5 state and
+10 ViewModel); shared tests pass with 38 Android host-test cases and 39 iOS
+simulator cases. The clean verification gate also passes shared assemble/check,
+Android debug assemble, and Android lint. Phase 4B implementation followed in
+the subsequent Compose work recorded below.
+
+**Whole Phase 4 review (18 August 2026):** Phase 4B production flows are now
+implemented. The review found and corrected blocking-error copy that was
+otherwise hidden, raw detail error-string exposure, detail observation flow
+creation during recomposition, optional-image semantics, and a double-decoded
+percent-encoded navigation ID boundary. The clean gate passed 38 Android
+shared tests, 39 iOS-simulator shared tests, 18 Android application unit
+tests, shared assemble/check, Android debug assemble, and Android lint. The
+Pixel_9 emulator launched the clean APK and reproduced the presentation-safe
+no-cache offline error without a crash; the configured NewsAPI returned a
+legitimate empty snapshot, so row/detail/cache runtime paths were not
+re-exercisable in this environment. Phase 5 UI tests have not started.
+
+**Country configuration clarification (18 August 2026):** Inosoft clarified
+that the PDF's `country=id` was illustrative and approved `country=us` because
+it is currently the only non-empty country. The country now comes from the
+existing `NewsApiConfig` boundary and is set to `us` by Android composition;
+no selector or automatic fallback was added. Deterministic empty-state tests
+remain independent of live NewsAPI results.
+
+**Exit:** core flows are implemented, with prior online/offline manual evidence
+recorded; the current clean-device run was limited by the configured endpoint
+returning an empty snapshot, as documented above.
 
 ## Phase 5 - UI Tests
 

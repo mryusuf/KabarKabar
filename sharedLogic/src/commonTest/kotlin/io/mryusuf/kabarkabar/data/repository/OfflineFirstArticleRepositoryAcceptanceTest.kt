@@ -17,7 +17,11 @@ class OfflineFirstArticleRepositoryAcceptanceTest {
 
     private val remoteDataSource = FakeRemoteArticleDataSource()
     private val localDataSource = FakeLocalArticleDataSource()
-    private val repository = OfflineFirstArticleRepository(remoteDataSource, localDataSource)
+    private val repository = OfflineFirstArticleRepository(
+        remoteDataSource = remoteDataSource,
+        localDataSource = localDataSource,
+        country = "us",
+    )
 
     @Test
     fun t1_fetch_map_persist_expose() = runTest {

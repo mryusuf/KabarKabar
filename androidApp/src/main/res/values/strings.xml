@@ -1,3 +1,19 @@
 <resources>
     <string name="app_name">KabarKabar</string>
+    <string name="article_list_title">KabarKabar</string>
+    <string name="article_detail_title">Article Detail</string>
+    <string name="article_not_found">Article not found.</string>
+
+    <string name="loading_articles">Loading articles…</string>
+    <string name="empty_articles">No articles found.</string>
+    <string name="error_loading_articles">Failed to load articles.</string>
+    <string name="error_network">Network unavailable. Check your connection.</string>
+    <string name="error_remote">News server is currently unavailable.</string>
+    <string name="error_persistence">Local database error.</string>
+    <string name="error_malformed">Received unusable data from server.</string>
+    <string name="error_unknown">An unexpected error occurred.</string>
+
+    <string name="retry">Retry</string>
+    <string name="back">Back</string>
+    <string name="article_image_content_description">Article image</string>
 </resources>

@@ -22,17 +22,25 @@ kotlin {
 
 dependencies {
     implementation(project(":sharedLogic"))
+    implementation(libs.ktor.client.core)
+    implementation(libs.room.runtime)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.testJunit)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.coil.compose)
+    implementation(libs.coil.network.ktor)
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
+    implementation(libs.koin.compose.viewmodel)
 
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
+    implementation(libs.androidx.material.icons.core)
     implementation(libs.compose.ui)
 
     implementation(libs.compose.uiToolingPreview)

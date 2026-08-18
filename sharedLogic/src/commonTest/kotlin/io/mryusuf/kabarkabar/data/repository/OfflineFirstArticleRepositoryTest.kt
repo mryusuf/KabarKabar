@@ -30,7 +30,11 @@ class OfflineFirstArticleRepositoryTest {
 
     private val remoteDataSource = FakeRemoteArticleDataSource()
     private val localDataSource = FakeLocalArticleDataSource()
-    private val repository = OfflineFirstArticleRepository(remoteDataSource, localDataSource)
+    private val repository = OfflineFirstArticleRepository(
+        remoteDataSource = remoteDataSource,
+        localDataSource = localDataSource,
+        country = "us",
+    )
 
     @Test
     fun refreshArticles_success_persistsArticles() = runTest {
@@ -49,7 +53,7 @@ class OfflineFirstArticleRepositoryTest {
         val result = repository.refreshArticles()
 
         assertEquals(RefreshResult.Success, result)
-        assertEquals("id", remoteDataSource.requestedCountry)
+        assertEquals("us", remoteDataSource.requestedCountry)
         assertEquals(1, localDataSource.articles.value.size)
         assertEquals("Title", localDataSource.articles.value[0].title)
     }
