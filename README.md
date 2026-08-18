@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phases 0–4 presentation and runtime review are complete. Phase 5 Compose UI acceptance tests remain pending.
+> Status: Phases 0–5 are complete. Core shippable requirements are satisfied. Phase 6 review and Phase 7 bonus work remain pending.
 
 ## Goal
 
@@ -28,7 +28,7 @@ Demonstrate:
 - [x] Clear error state when neither remote nor local data is usable
 - [x] System back + app-bar back navigation
 - [x] Required unit tests
-- [ ] Required Compose UI tests
+- [x] Required Compose UI tests
 
 ## Tech Stack
 
@@ -152,12 +152,20 @@ Run these commands from the repository root after configuring `local.properties`
 
 # Compose/instrumentation tests; requires an attached emulator or device.
 ./gradlew :androidApp:connectedDebugAndroidTest
+
+# Run T4 alone.
+./gradlew :androidApp:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=io.mryusuf.kabarkabar.ArticleNavigationTest
+
+# Run T5 alone.
+./gradlew :androidApp:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=io.mryusuf.kabarkabar.OfflineBehaviorTest
 ```
 
 The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 10
 `ArticleListViewModelTest` cases, 2 `ArticleDetailViewModelTest` cases, and 1
-navigation boundary test (18 total). Compose UI test sources are intentionally
-not added yet because they belong to Phase 5.
+navigation boundary test (18 total). The instrumented task runs 2 Compose UI
+acceptance tests (T4 and T5).
 
 To manually verify the current Android application on a connected device:
 
@@ -179,7 +187,7 @@ adb shell am start -n io.mryusuf.kabarkabar/.MainActivity
 - A refresh failure with cache is shown as a non-blocking message.
 - No cache + no usable remote/local data becomes an explicit error state.
 
-Durable content uses typed Loading, Data, Empty, and Error states. Refreshing is orthogonal to content availability, and one-shot Snackbar/effect messages are not persistent nullable StateFlow data. At the repository boundary, a failed initial refresh is returned as `RefreshResult.Failure` while an empty local snapshot remains `ArticleObservation.Data(emptyList())`; Phase 4 combines those outcomes to derive the blocking Error state, while `RefreshResult.Success` distinguishes a legitimate successful empty snapshot. Compose rendering and navigation are complete; formal UI acceptance remains Phase 5.
+Durable content uses typed Loading, Data, Empty, and Error states. Refreshing is orthogonal to content availability, and one-shot Snackbar/effect messages are not persistent nullable StateFlow data. At the repository boundary, a failed initial refresh is returned as `RefreshResult.Failure` while an empty local snapshot remains `ArticleObservation.Data(emptyList())`; Phase 4 combines those outcomes to derive the blocking Error state, while `RefreshResult.Success` distinguishes a legitimate successful empty snapshot. Compose rendering and navigation are complete, and Phase 5 formally covers the required T4/T5 UI acceptance flows.
 
 See `specs/architecture.md`.
 
@@ -217,6 +225,7 @@ review/remediation is kept separate from Agent Mode evidence.
 | 3 | Phase 3 T1–T3 offline-first acceptance tests | See `plan/ai-usage-log.md` Entry 3 | Agent Mode corrected minor compile-time test issues; Codex review separately strengthened persistence and optional-field assertions | `:sharedLogic:allTests`: 38 Android shared tests and 39 iOS shared tests |
 | 4 | Phase 4A ViewModel state orchestration and presentation tests | See `plan/ai-usage-log.md` Entry 4 | Agent Mode corrected the initial empty-vs-failed-sync state distinction; the later independent Codex review/remediation is not Agent Mode evidence | `:androidApp:testDebugUnitTest`: 15 cases after remediation |
 | 5 | Phase 4B Compose screens, navigation, pull-to-refresh, and Coil image loading | See `plan/ai-usage-log.md` Entry 5 | Gemini-assisted image debugging recorded the missing Coil 3 network integration and singleton ImageLoader correction; independent review fixes remain separate | Debug assemble plus Pixel 9 exploratory runtime checks |
+| 6 | Phase 5 Compose UI acceptance tests (T4 & T5) | See `plan/ai-usage-log.md` Entry 6 | Agent Mode corrections and the subsequent Codex review are explicitly separated; Codex seeded cache before activity launch, recorded the configured refresh failure, and added distinguishable T4 identity fixtures | T4 individually, T5 individually, and together: 2 PASSED on Pixel_9 |
 
 At least one final entry must describe a real AI-generated mistake/suboptimal approach and how it was corrected.
 

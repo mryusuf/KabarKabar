@@ -147,7 +147,8 @@ tests, shared assemble/check, Android debug assemble, and Android lint. The
 Pixel_9 emulator launched the clean APK and reproduced the presentation-safe
 no-cache offline error without a crash; the configured NewsAPI returned a
 legitimate empty snapshot, so row/detail/cache runtime paths were not
-re-exercisable in this environment. Phase 5 UI tests have not started.
+re-exercisable in this environment. At this Phase 4 checkpoint, Phase 5 UI
+tests had not started.
 
 **Country configuration clarification (18 August 2026):** Inosoft clarified
 that the PDF's `country=id` was illustrative and approved `country=us` because
@@ -162,9 +163,28 @@ returning an empty snapshot, as documented above.
 
 ## Phase 5 - UI Tests
 
-- [ ] T4 app -> list -> detail.
-- [ ] T5 cached/offline state renders.
-- [ ] Inject deterministic repository/data boundaries for tests; never use the real NewsAPI.
+- [x] T4 app -> list -> detail.
+- [x] T5 cached/offline state renders.
+- [x] Inject deterministic repository/data boundaries for tests; never use the real NewsAPI.
+
+**Verification (18 August 2026):** Implemented `FakeArticleRepository` and a
+custom `AndroidJUnitRunner` providing `TestKabarKabarApp` to avoid production
+Koin initialization. The focused review then seeded the fake persisted snapshot
+before activity launch, configured the automatic refresh to return
+`RefreshResult.Failure(SyncError.Network)`, and recorded that refresh was
+actually called. T4 uses two distinguishable articles, taps the selected
+article, and verifies the matching detail content through the real `NavHost`;
+T5 verifies the cached article remains visible without a blocking retry state.
+The tests use null image URLs and no real NewsAPI boundary. An Espresso
+`NoSuchMethodException` on newer APIs was corrected by forcing
+`androidx.test.espresso:espresso-core:3.7.0` and `androidx.test:runner:1.7.0`
+via a Gradle `resolutionStrategy`.
+
+T4 ran individually, T5 ran individually, and both ran together on the
+`Pixel_9` emulator, for 2 instrumented UI tests with 0 failures. The clean
+verification gate passed with 38 Android shared tests, 39 iOS shared tests,
+18 Android application unit tests, and 2 Android instrumented UI tests;
+shared assemble/check, Android debug assemble, and Android lint also passed.
 
 **Exit:** required UI tests green and stable.
 

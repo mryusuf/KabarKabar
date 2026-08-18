@@ -30,6 +30,12 @@ dependencies {
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.testJunit)
 
+    androidTestImplementation(libs.compose.test.junit4)
+    androidTestImplementation(libs.androidx.testExt.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.koin.test)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.coil.compose)
@@ -51,6 +57,13 @@ android {
     namespace = "io.mryusuf.kabarkabar"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    configurations.all {
+        resolutionStrategy {
+            force(libs.androidx.espresso.core)
+            force(libs.androidx.test.runner)
+        }
+    }
+
     defaultConfig {
         applicationId = "io.mryusuf.kabarkabar"
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -59,6 +72,7 @@ android {
         versionName = "1.0"
 
         buildConfigField("String", "NEWS_API_KEY", "\"$newsApiKey\"")
+        testInstrumentationRunner = "io.mryusuf.kabarkabar.KabarKabarTestRunner"
     }
     packaging {
         resources {

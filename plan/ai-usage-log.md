@@ -166,13 +166,66 @@ N/A (Phase 4B Complete)
 
 ---
 
+## Entry 6
+
+**Task/category:**
+Phase 5: Compose UI Acceptance Tests (T4 & T5)
+
+**Prompt / context given to Agent Mode:**
+Implement the required Compose UI acceptance tests T4 and T5 from `specs/testing.md`. T4 verifies the full list-to-detail navigation flow. T5 verifies that cached articles remain visible even when the remote refresh fails. Use a fake repository and a custom TestRunner to ensure deterministic results without hitting the real network.
+
+**What the agent produced:**
+Created `KabarKabarTestRunner`, `TestKabarKabarApp`, `FakeArticleRepository`, `ArticleTestData`, `ArticleNavigationTest` (T4), and `OfflineBehaviorTest` (T5). Updated `libs.versions.toml` and `androidApp/build.gradle.kts`.
+
+**Agent Mode checkpoint review:**
+The agent established the test infrastructure with a custom `AndroidJUnitRunner`
+that bypasses production Koin initialization and a deterministic
+`FakeArticleRepository`. The initial checkpoint reported the real `NavHost`
+navigation and the intended offline scenario, but the independent review below
+found that the T5 setup did not yet prove the refresh failure was observed.
+
+**What I changed or rejected, and why:**
+The Agent Mode checkpoint identified a real mistake: the initial
+`ArticleTestData` used `ArticleId.fromValue("https://example.com/1")` without
+the required `article-url:` prefix, causing an `IllegalArgumentException`
+during article construction. That checkpoint corrected it to use
+`ArticleId.fromCanonicalUrl(url)`.
+
+The Agent Mode checkpoint also corrected the incompatible `ui-test-manifest`
+version and addressed a `NoSuchMethodException` on newer APIs by forcing
+Espresso 3.7.0 and Test Runner 1.7.0 via a Gradle `resolutionStrategy`.
+
+**Subsequent Codex review/remediation (not Agent Mode evidence):**
+The initial T5 arranged cache emission and the failure result inside the test
+method, after `MainActivity` could already have launched and completed its
+automatic refresh. T4 also used only one article. Codex changed the fake to
+accept initial persisted articles and an initial refresh result, record refresh
+calls, seeded both tests before activity launch, used two distinguishable T4
+articles, and removed remote image URLs from the fixtures. No production
+feature code or test-only production branch was added.
+
+**Validation performed:**
+The Agent Mode checkpoint ran `./gradlew :androidApp:connectedDebugAndroidTest`
+with 2 tests on the Pixel 9 emulator. Codex then ran T4 individually, T5
+individually, and both together on `Pixel_9`, followed by the exact clean
+regression gate: `sharedLogic` tests (38 Android, 39 iOS), `androidApp` unit
+tests (18 cases), shared assemble/check, Android debug assemble, and lint.
+
+**Commit / PR (optional):**
+N/A (Phase 5 Complete)
+
+---
+
 ## Evidence status
 
-Entries 1–5 are recorded above. Entry 2 is a meaningful Android Studio Agent
+Entries 1–6 are recorded above. Entry 2 is a meaningful Android Studio Agent
 Mode data-layer task and includes the documented empty-vs-malformed mapper
 correction, dependency correction, and Room constructor correction. Entry 3 is
 the reported meaningful Android Studio Agent Mode acceptance-test task; Codex
 review/remediation work is not counted as Agent Mode evidence.
+Entry 6 is the reported meaningful Android Studio Agent Mode Compose UI
+acceptance-test task; the later T4/T5 boundary corrections are Codex review
+work and are not attributed to Agent Mode.
 
 The mapper correction is supported by the Phase 2 artifact available at the
 start of this Codex review: the earlier indexed mapper returned a plain article
