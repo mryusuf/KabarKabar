@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import io.mryusuf.kabarkabar.R
 import io.mryusuf.kabarkabar.domain.model.ArticleId
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import io.mryusuf.kabarkabar.presentation.util.DateFormatter
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -43,10 +44,11 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun ArticleDetailScreen(
     articleId: ArticleId,
+    country: NewsCountry,
     onBack: () -> Unit,
     onImageClick: (String) -> Unit,
     viewModel: ArticleDetailViewModel = koinViewModel(
-        parameters = { parametersOf(articleId) }
+        parameters = { parametersOf(articleId, country) }
     )
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

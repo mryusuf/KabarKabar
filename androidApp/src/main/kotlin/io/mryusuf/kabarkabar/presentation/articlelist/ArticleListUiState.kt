@@ -1,6 +1,7 @@
 package io.mryusuf.kabarkabar.presentation.articlelist
 
 import io.mryusuf.kabarkabar.domain.model.Article
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 
 /** Durable content state for the article list. */
 sealed interface ArticleListContent {
@@ -32,6 +33,7 @@ enum class ArticleListUiError {
 data class ArticleListUiState(
     val content: ArticleListContent = ArticleListContent.Loading,
     val isRefreshing: Boolean = false,
+    val selectedCountry: NewsCountry = NewsCountry.US,
 ) {
     init {
         require(!isRefreshing || content is ArticleListContent.Data) {

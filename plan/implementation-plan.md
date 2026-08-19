@@ -152,10 +152,12 @@ tests had not started.
 
 **Country configuration clarification (18 August 2026):** Inosoft clarified
 that the PDF's `country=id` was illustrative and approved `country=us` because
-it is currently the only non-empty country. The country now comes from the
-existing `NewsApiConfig` boundary and is set to `us` by Android composition;
-no selector or automatic fallback was added. Deterministic empty-state tests
-remain independent of live NewsAPI results.
+it is currently the only non-empty country. At this pre-7C checkpoint the
+Android composition supplied `us` through the configuration boundary and no
+selector or automatic fallback was added. Deterministic empty-state tests
+remain independent of live NewsAPI results. Phase 7C supersedes that temporary
+single-country composition with the typed US/ID selector and explicit
+country-scoped repository contract documented in `plan/phase7-implementation-plan.md`.
 
 **Exit:** core flows are implemented, with prior online/offline manual evidence
 recorded; the current clean-device run was limited by the configured endpoint
@@ -231,6 +233,7 @@ Priority order:
 4. [x] accessibility baseline (Phase 7A); full audit remains future work
 5. [ ] pagination
 6. [x] full-screen image viewer (Phase 7B)
+7. [x] country selection and country-aware offline correctness (Phase 7C)
 
 Do not add bonus modularization unless it solves a real problem.
 

@@ -5,6 +5,7 @@ import io.mryusuf.kabarkabar.data.remote.dto.NewsApiArticleDto
 import io.mryusuf.kabarkabar.domain.model.Article
 import io.mryusuf.kabarkabar.domain.model.ArticleId
 import io.mryusuf.kabarkabar.domain.model.EpochMilliseconds
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import kotlin.time.Instant
 
 /**
@@ -58,12 +59,13 @@ object ArticleMapper {
     }
 
     /**
-     * Maps a list of domain Articles to entities for persistence.
+     * Maps a list of domain Articles to entities for persistence with the given [country].
      */
-    fun mapToEntities(articles: List<Article>): List<ArticleEntity> {
+    fun mapToEntities(articles: List<Article>, country: NewsCountry): List<ArticleEntity> {
         return articles.map { article ->
             ArticleEntity(
                 id = article.id.value,
+                countryCode = country.code,
                 url = article.url,
                 title = article.title,
                 description = article.description,

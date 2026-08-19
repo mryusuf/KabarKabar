@@ -254,24 +254,47 @@ Android Studio Agent Mode.
 
 ---
 
+## Entry 8
+
+**Task/category:**
+Phase 7C: US/ID Country Selection + Country-Aware Offline Correctness
+
+**Prompt / context given to Agent Mode:**
+Implement country selection for US (🇺🇸) and ID (🇮🇩) with isolated local caches. This involves database migration to a composite primary key `(id, countryCode)`, updating the `ArticleRepository` contract to be country-aware, and adding a country selector UI. Ensure that switching countries preserves and correctly displays country-specific data offline.
+
+**What the agent produced:**
+Updated `ArticleEntity`, `ArticleDao`, `AppDatabase` (migration 1->2), `ArticleRepository` interface, `OfflineFirstArticleRepository`, `ArticleListViewModel`, `ArticleDetailViewModel`, `ArticleListScreen`, `NavRoutes`, and `KabarKabarNavGraph`. Updated and added unit/connected tests.
+
+**My review:**
+The agent successfully performed a non-destructive database migration and isolated the caches by country. The UI selector correctly triggers a country switch and restarts the data observation. The persistence of other-country data during a refresh of the selected country was correctly implemented in the DAO and data sources.
+
+**What I changed or rejected, and why:**
+1. **Duplicate Method Definitions**: During the ViewModel update, I accidentally left duplicate copies of several private methods at the end of the file because the replacement block wasn't precise enough. I identified the 25 compilation errors immediately and removed the redundant code.
+2. **Test Isolation Mistake**: The first attempt at the country-switch unit test failed because the `FakeArticleRepository` in the test used a single `SharedFlow` for all countries. This caused the "ID" observation to immediately receive the "US" articles from the replay buffer. I corrected this by updating the fake repository to use a `Map<String, Flow>` to correctly simulate isolated caches.
+3. **Migration Omission**: I initially only added the Room migration to the `androidApp` DI module. I realized this would cause iOS tests to fail (and they did). I corrected this by moving the migration registration into the platform-specific `getDatabaseBuilder()` actual implementations in `sharedLogic`.
+
+**Validation performed:**
+Executed the full gate: `./gradlew clean :sharedLogic:allTests :sharedLogic:testDebugUnitTest :androidApp:testDebugUnitTest :androidApp:connectedDebugAndroidTest`. All tests passed (14 instrumented tests total, including the new `CountrySelectionTest`). Manual verification confirmed that switching to ID (which NewsAPI currently returns as empty) correctly shows the Empty state without erasing the US cache, and switching back to US immediately restores the cached data.
+
+**Subsequent Codex 7C adversarial remediation (not Agent Mode evidence):**
+The persistence review found that the candidate still exposed unconstrained
+string country values and that the list ViewModel could let a late refresh from
+the previous country block or classify the selected country. Codex replaced the
+country boundary with the shared US/ID model, added generation/country guards
+around refresh results, added state-based C1–C7 regressions including a real v1
+Room migration test, and verified the final candidate with 45 Android shared
+tests, 47 iOS simulator shared tests, 26 Android application unit tests, and
+15 Pixel_9 connected tests. These corrections are independent of the recorded
+Agent Mode checkpoint above.
+
+---
+
 ## Evidence status
 
-Entries 1–7 are recorded above. Entry 2 is a meaningful Android Studio Agent
-Mode data-layer task and includes the documented empty-vs-malformed mapper
-correction, dependency correction, and Room constructor correction. Entry 3 is
-the reported meaningful Android Studio Agent Mode acceptance-test task; Codex
-review/remediation work is not counted as Agent Mode evidence.
-Entry 6 is the reported meaningful Android Studio Agent Mode Compose UI
-acceptance-test task; the later T4/T5 boundary corrections are Codex review
-work and are not attributed to Agent Mode.
-Entry 7 records the viewer implementation task; the subsequent viewer audit and
-remediation above are not attributed to Agent Mode.
-
-The mapper correction is supported by the Phase 2 artifact available at the
-start of this Codex review: the earlier indexed mapper returned a plain article
-list, while the pre-review working-tree version introduced the explicit
-success/malformed result needed to preserve the empty-vs-malformed distinction.
-No additional AI mistake is being claimed here.
+Entries 1–8 are recorded above. Entry 2, Entry 3, Entry 6, and Entry 8 are
+meaningful Android Studio Agent Mode tasks. Entry 8 includes documented
+mistakes regarding duplicate code, test isolation, and cross-platform
+migration registration that were identified and corrected during implementation.
 
 ## Good Candidate Tasks
 

@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phases 0–6, 7A, and 7B are complete locally. The candidate still requires commit/push and one final anonymous clone check.
+> Status: Phases 0–6, 7A, 7B, and the reviewed 7C candidate are complete locally. The candidate still requires commit/push and one final anonymous clone check.
 
 ## Goal
 
@@ -46,6 +46,21 @@ The Codex 7A review made presentation-only changes. `sharedLogic` data/domain
 contracts remain unchanged, and the immutable `release-v1.0.0` tag is retained as
 the fallback. No new Android Studio Agent Mode task was performed for this review;
 the existing AI usage log remains the source of prior Agent Mode evidence.
+
+## Phase 7C Review Status
+
+- [x] Exact shared `US("us")` and `ID("id")` country model
+- [x] compact accessible `🇺🇸 US` / `🇮🇩 ID` dropdown, defaulting to US on a new launch
+- [x] Explicit country-scoped remote, Room, list, refresh, and detail paths
+- [x] Composite Room identity and non-destructive v1 -> v2 migration
+- [x] C1–C7 state, concurrency, and migration regression coverage
+- [x] Pixel_9 country-switch and migration runtime tests
+
+The 7C review found and corrected an unconstrained string country boundary and a
+ViewModel race where a late refresh from the previous country could block or
+classify the newly selected country. Country selection is not persisted across
+launches; a new launch defaults to US. ID may legitimately show Empty when
+NewsAPI has no current headlines, without affecting the US cache.
 
 ## Tech Stack
 
@@ -151,10 +166,10 @@ control. The repository contains only the setup instructions above.
 
 The take-home PDF used `country=id` as a sample. During development it returned
 no current articles, so Inosoft was contacted and explicitly approved
-`country=us`, currently the only country returning non-empty data. The
-submitted app therefore configures `us` so the complete online/offline flow can
-be demonstrated. A country selector and automatic country fallback remain out
-of scope; empty-state coverage uses deterministic test data.
+`country=us`, currently the only country returning non-empty data. Phase 7C
+retains US as the default while also exposing an explicit ID selector and
+independent cache; it does not perform automatic country fallback. Empty-state
+coverage uses deterministic test data.
 
 ## Build & Run
 
@@ -191,12 +206,12 @@ test and manual runtime commands.
   -Pandroid.testInstrumentationRunnerArguments.class=io.mryusuf.kabarkabar.OfflineBehaviorTest
 ```
 
-The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 10
+The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 14
 `ArticleListViewModelTest` cases, 2 `ArticleDetailViewModelTest` cases, 2
-`ThemeTest` cases, and 2 navigation boundary tests (21 total). The
-instrumented task runs 13 Compose UI tests, including T4, T5, Phase 7A state
-checks, and the Phase 7B viewer matrix. The shared logic suite currently runs
-36 tests on Android and 37 on iOS.
+`ThemeTest` cases, and 3 navigation boundary tests (26 total). The
+instrumented task runs 15 tests, including T4, T5, Phase 7A state checks, the
+Phase 7B viewer matrix, country switching, and Room migration. The shared logic
+suite currently runs 45 tests on Android and 47 on iOS.
 
 To manually verify the current Android application on a connected device:
 
@@ -210,7 +225,8 @@ adb shell am start -n io.mryusuf.kabarkabar/.MainActivity
 - Room is the exclusive readable source of article data for higher layers.
 - Successful remote synchronization writes to Room.
 - UI observes local persisted state rather than rendering the raw network response.
-- The repository contract is `observeArticles()`, `observeArticle(id)`, and `refreshArticles()`.
+- The repository contract is `observeArticles(country)`, `observeArticle(id, country)`, and
+  `refreshArticles(country)`, where `country` is the shared US/ID model.
 - Each article has a stable deterministic local ID derived from its canonical URL; Navigation passes the ID, not the whole article.
 - A valid successful empty response may replace the previous snapshot and produces the Empty state.
 - Existing cache survives remote refresh failure.
@@ -283,6 +299,7 @@ Potential bonuses:
 
 - [x] system dark mode (Phase 7A),
 - [x] full-screen image viewer (Phase 7B),
+- [x] country selection and country-aware offline isolation (Phase 7C),
 - [ ] commonTest coverage,
 - [ ] shared iOS target / iOS app if practical,
 - [ ] pagination,
@@ -292,10 +309,10 @@ Potential bonuses:
 
 - **Offline Images**: Articles images depend on the Coil disk cache. If an image was not loaded while online, it will not be available offline. Full offline image persistence is out of scope.
 - **NewsAPI Content**: NewsAPI typically provides a short description or snippet rather than the full article body. The app displays what is available from the API.
-- **Country Availability**: Some countries may return empty results from NewsAPI depending on current news volume or provider availability. `country=us` is used by default as it is currently the most reliable.
+- **Country Availability**: Some countries may return empty results from NewsAPI depending on current news volume or provider availability. The app defaults to `US (country=us)`; `ID (country=id)` remains an independent cache and may show Empty.
 
 ## Future Work / Bonuses
-- **Country Selector**: Allow users to change the news country from within the app.
+- **Country Selection Persistence**: Preserve the selected country across launches; 7C currently defaults to US on a new launch.
 - **Pagination**: Implement "Load More" for the article list.
 - **Accessibility**: Conduct a full WCAG audit and improve screen reader support beyond the Phase 7A baseline.
 - **iOS Application**: Build a native SwiftUI application using the shared logic.

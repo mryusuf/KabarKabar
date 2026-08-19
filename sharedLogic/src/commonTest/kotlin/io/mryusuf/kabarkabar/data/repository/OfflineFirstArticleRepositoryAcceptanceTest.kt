@@ -5,6 +5,7 @@ import io.mryusuf.kabarkabar.data.remote.dto.NewsApiResponseDto
 import io.mryusuf.kabarkabar.domain.error.SyncError
 import io.mryusuf.kabarkabar.domain.model.ArticleId
 import io.mryusuf.kabarkabar.domain.model.ArticleObservation
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import io.mryusuf.kabarkabar.domain.model.RefreshResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -20,7 +21,6 @@ class OfflineFirstArticleRepositoryAcceptanceTest {
     private val repository = OfflineFirstArticleRepository(
         remoteDataSource = remoteDataSource,
         localDataSource = localDataSource,
-        country = "us",
     )
 
     @Test
@@ -43,19 +43,20 @@ class OfflineFirstArticleRepositoryAcceptanceTest {
         )
 
         // When: refreshArticles() succeeds
-        val refreshResult = repository.refreshArticles()
+        val refreshResult = repository.refreshArticles(NewsCountry.US)
         assertEquals(RefreshResult.Success, refreshResult)
         assertEquals(1, remoteDataSource.fetchCount)
 
         // Then: the local boundary contains the committed snapshot before it is observed
         val persistedArticle = localDataSource.articles.value.single()
+        assertEquals("us", persistedArticle.countryCode)
         assertEquals("https://example.com/t1", persistedArticle.url)
         assertEquals("Description", persistedArticle.description)
         assertEquals("https://example.com/image.jpg", persistedArticle.imageUrl)
         assertEquals(1710936000000L, persistedArticle.publishedAt)
 
         // Then: observeArticles() exposes the persisted domain articles
-        val observation = repository.observeArticles().first()
+        val observation = repository.observeArticles(NewsCountry.US).first()
         assertIs<ArticleObservation.Data<*>>(observation)
         val articles = (observation as ArticleObservation.Data).value
         assertEquals(1, articles.size)
@@ -85,10 +86,10 @@ class OfflineFirstArticleRepositoryAcceptanceTest {
             totalResults = 1,
             articles = listOf(cachedDto)
         )
-        assertEquals(RefreshResult.Success, repository.refreshArticles())
+        assertEquals(RefreshResult.Success, repository.refreshArticles(NewsCountry.US))
 
         // Given: observeArticles() exposes that cache
-        val initialObservation = repository.observeArticles().first()
+        val initialObservation = repository.observeArticles(NewsCountry.US).first()
         assertIs<ArticleObservation.Data<*>>(initialObservation)
         val initialArticles = (initialObservation as ArticleObservation.Data).value
         assertEquals(1, initialArticles.size)
@@ -97,14 +98,14 @@ class OfflineFirstArticleRepositoryAcceptanceTest {
         // When: the remote refresh fails
         remoteDataSource.response = null
         remoteDataSource.exception = IOException("Network failure")
-        val refreshResult = repository.refreshArticles()
+        val refreshResult = repository.refreshArticles(NewsCountry.US)
 
         // Then: refreshArticles() returns the appropriate domain failure
         assertEquals(RefreshResult.Failure(SyncError.Network), refreshResult)
 
         // Then: the previous persisted snapshot remains unchanged
         // Then: observeArticles() continues exposing the same cached content
-        val postFailureObservation = repository.observeArticles().first()
+        val postFailureObservation = repository.observeArticles(NewsCountry.US).first()
         assertIs<ArticleObservation.Data<*>>(postFailureObservation)
         val postFailureArticles = (postFailureObservation as ArticleObservation.Data).value
 
@@ -117,7 +118,7 @@ class OfflineFirstArticleRepositoryAcceptanceTest {
     fun t3_remote_failure_plus_no_local_data_error() = runTest {
         // Given: no usable cached article data exists
         assertEquals(0, localDataSource.articles.value.size)
-        val observationBefore = repository.observeArticles().first()
+        val observationBefore = repository.observeArticles(NewsCountry.US).first()
         assertIs<ArticleObservation.Data<*>>(observationBefore)
         assertEquals(0, (observationBefore as ArticleObservation.Data).value.size)
 
@@ -125,13 +126,13 @@ class OfflineFirstArticleRepositoryAcceptanceTest {
         remoteDataSource.exception = IOException("Network failure")
 
         // When: higher-level repository behavior is evaluated (refreshArticles)
-        val refreshResult = repository.refreshArticles()
+        val refreshResult = repository.refreshArticles(NewsCountry.US)
 
         // Then: the failure remains represented as the appropriate domain error
         assertEquals(RefreshResult.Failure(SyncError.Network), refreshResult)
 
         // Then: no fake/empty article content is manufactured
-        val observationAfter = repository.observeArticles().first()
+        val observationAfter = repository.observeArticles(NewsCountry.US).first()
         assertIs<ArticleObservation.Data<*>>(observationAfter)
         val finalArticles = (observationAfter as ArticleObservation.Data).value
         assertEquals(0, finalArticles.size)

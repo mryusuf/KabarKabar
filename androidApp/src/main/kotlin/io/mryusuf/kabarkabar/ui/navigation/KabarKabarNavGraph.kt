@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import io.mryusuf.kabarkabar.domain.model.ArticleId
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import io.mryusuf.kabarkabar.presentation.articledetail.ArticleDetailScreen
 import io.mryusuf.kabarkabar.presentation.articlelist.ArticleListScreen
 import io.mryusuf.kabarkabar.presentation.imageviewer.ImageViewerScreen
@@ -16,12 +17,12 @@ import java.nio.charset.StandardCharsets
 
 object NavRoutes {
     const val ARTICLE_LIST = "article_list"
-    const val ARTICLE_DETAIL = "article_detail/{articleId}"
+    const val ARTICLE_DETAIL = "article_detail/{articleId}/{countryCode}"
     const val IMAGE_VIEWER = "image_viewer/{imageUrl}"
 
-    fun articleDetail(id: ArticleId): String {
+    fun articleDetail(id: ArticleId, country: NewsCountry): String {
         val encodedId = URLEncoder.encode(id.value, StandardCharsets.UTF_8.toString())
-        return "article_detail/$encodedId"
+        return "article_detail/$encodedId/${country.code}"
     }
 
     fun imageViewer(url: String): String {
@@ -34,6 +35,9 @@ object NavRoutes {
 
     fun articleIdFromArgument(value: String?): ArticleId? =
         value?.let { runCatching { ArticleId.fromValue(it) }.getOrNull() }
+
+    fun countryFromArgument(value: String?): NewsCountry? =
+        value?.let(NewsCountry::fromCode)
 }
 
 @Composable
@@ -46,23 +50,28 @@ fun KabarKabarNavGraph(
     ) {
         composable(NavRoutes.ARTICLE_LIST) {
             ArticleListScreen(
-                onArticleClick = { articleId ->
-                    navController.navigate(NavRoutes.articleDetail(articleId))
+                onArticleClick = { articleId, country ->
+                    navController.navigate(NavRoutes.articleDetail(articleId, country))
                 }
             )
         }
         composable(
             route = NavRoutes.ARTICLE_DETAIL,
             arguments = listOf(
-                navArgument("articleId") { type = NavType.StringType }
+                navArgument("articleId") { type = NavType.StringType },
+                navArgument("countryCode") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val articleId = NavRoutes.articleIdFromArgument(
                 backStackEntry.arguments?.getString("articleId")
             )
-            if (articleId != null) {
+            val country = NavRoutes.countryFromArgument(
+                backStackEntry.arguments?.getString("countryCode")
+            )
+            if (articleId != null && country != null) {
                 ArticleDetailScreen(
                     articleId = articleId,
+                    country = country,
                     onBack = { navController.popBackStack() },
                     onImageClick = { imageUrl ->
                         navController.navigate(NavRoutes.imageViewer(imageUrl)) {

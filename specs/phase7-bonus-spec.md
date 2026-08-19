@@ -191,9 +191,25 @@ Exactly two user-facing options:
 
 - current country clearly visible,
 - emoji + country label,
-- accessible selector,
+- compact app-bar dropdown/menu selector,
+- clear `Country` semantic label with the selected value exposed,
+- each menu item exposes its country name/code and selected state semantically,
+- selector touch target is adequate for accessibility,
 - switching country stays on Article List,
 - no settings screen.
+
+The frozen presentation is:
+
+```text
+KabarKabar                         🇺🇸 US ▾
+
+🇺🇸 US   ✓
+🇮🇩 ID
+```
+
+Do not implement this as tabs, a `TabRow`, a horizontal pager, bottom
+navigation, or separate country screens. Country is feed configuration, not
+navigation.
 
 Persisting selection across launches is optional. If not persisted, default to US and document it.
 

@@ -15,6 +15,7 @@ import io.mryusuf.kabarkabar.data.remote.api.RemoteArticleDataSource
 import io.mryusuf.kabarkabar.data.remote.api.createNewsApiClient
 import io.mryusuf.kabarkabar.data.repository.OfflineFirstArticleRepository
 import io.mryusuf.kabarkabar.domain.model.ArticleId
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import io.mryusuf.kabarkabar.domain.repository.ArticleRepository
 import io.mryusuf.kabarkabar.presentation.articlelist.ArticleListViewModel
 import io.mryusuf.kabarkabar.presentation.articledetail.ArticleDetailViewModel
@@ -34,7 +35,6 @@ val appModule = module {
     single<NewsApiConfig> {
         object : NewsApiConfig {
             override val apiKey: String = BuildConfig.NEWS_API_KEY
-            override val country: String = "us"
         }
     }
     single<HttpClientEngine> { getHttpClientEngine() }
@@ -45,10 +45,11 @@ val appModule = module {
         OfflineFirstArticleRepository(
             remoteDataSource = get(),
             localDataSource = get(),
-            country = get<NewsApiConfig>().country,
         )
     }
 
     viewModel { ArticleListViewModel(get()) }
-    viewModel { (articleId: ArticleId) -> ArticleDetailViewModel(get(), articleId) }
+    viewModel { (articleId: ArticleId, country: NewsCountry) ->
+        ArticleDetailViewModel(get(), articleId, country)
+    }
 }

@@ -4,7 +4,7 @@
 
 - Baseline: `release-v1.0.0`
 - Baseline meaning: audited Phase 0–6 submission-safe release.
-- Phase 7: 7A and 7B complete locally; 7C and later remain NOT STARTED.
+- Phase 7: 7A, 7B, and the reviewed 7C candidate are complete locally; 7D and later remain NOT STARTED.
 - Final target: consider `release-v1.1.0` only after whole-Phase-7 audit and clean-clone verification.
 - Phase 8 modularization: deferred until after submission.
 
@@ -94,22 +94,49 @@ connected tests. `git diff --check` passed. Phase 7C and later remain untouched.
 
 # Phase 7C — Country Selection & Offline Correctness
 
-- [ ] shared US/us and ID/id representation
-- [ ] `🇺🇸 US` / `🇮🇩 ID` selector
-- [ ] explicit country-scoped repository behavior
-- [ ] country represented in persistence ownership
-- [ ] non-destructive Room migration
-- [ ] old cache preserved as US
-- [ ] country-scoped list/detail/refresh
-- [ ] cached switch immediate
-- [ ] empty/failure isolated by country
-- [ ] no hidden mutable repository country
-- [ ] country isolation tests C1–C7
-- [ ] runtime QA
-- [ ] README trade-off update
-- [ ] Codex 7C gate: `SAFE TO START PHASE 7D: YES`
+- [x] shared US/us and ID/id representation
+- [x] compact accessible `🇺🇸 US` / `🇮🇩 ID` dropdown selector
+- [x] explicit country-scoped repository behavior
+- [x] country represented in persistence ownership
+- [x] non-destructive Room migration
+- [x] old cache preserved as US
+- [x] country-scoped list/detail/refresh
+- [x] cached switch immediate
+- [x] empty/failure isolated by country
+- [x] no hidden mutable repository country
+- [x] country isolation tests C1–C7
+- [x] runtime QA
+- [x] README trade-off update
+- [x] Codex 7C gate: `SAFE TO START PHASE 7D: YES`
 
 Decision: selected-country persistence is optional. If absent, default US and document it.
+
+## Phase 7C Codex adversarial review — 19 August 2026
+
+The candidate was reviewed against the country-selector -> ViewModel -> explicit
+repository -> NewsAPI -> Room -> scoped observation -> detail path. The initial
+candidate used unconstrained `String` country values and allowed an in-flight
+refresh from the previous country to block the new refresh or apply its result to
+the selected country's state. Both were corrected without changing the 7D
+remote/paging boundary.
+
+The focused and regression evidence is:
+
+- C1–C4 repository state tests cover scoped list/detail reads, selected-country
+  replacement, empty snapshots, and failures preserving the other cache.
+- C5–C6 ViewModel tests cover immediate cached switching, pending Loading,
+  selected-country Empty/Error, and both directions of late in-flight refresh.
+- C7 opens a handcrafted v1 Room database on Pixel_9 and verifies the old row
+  survives as US while ID remains empty.
+- The final clean gate passed with 45 Android shared tests, 47 iOS simulator
+  shared tests, 26 Android application unit tests, shared assemble/check,
+  Android debug assemble, and Android lint. The full Pixel_9 connected suite
+  passed 15 tests with 0 failures, and `git diff --check` passed. A fresh
+  anonymous clone remains a post-commit submission gate because this candidate
+  is intentionally still uncommitted.
+
+7D remains not started: no page/pageSize, append, load-more, or paging metadata
+was added.
 
 # Phase 7D — Pagination / Load More
 

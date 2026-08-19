@@ -10,6 +10,7 @@ import io.mryusuf.kabarkabar.domain.model.Article
 import io.mryusuf.kabarkabar.domain.model.ArticleId
 import io.mryusuf.kabarkabar.domain.model.ArticleObservation
 import io.mryusuf.kabarkabar.domain.model.RefreshResult
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import io.mryusuf.kabarkabar.domain.repository.ArticleRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -30,14 +31,13 @@ import kotlinx.serialization.SerializationException
 class OfflineFirstArticleRepository(
     private val remoteDataSource: RemoteArticleDataSource,
     private val localDataSource: LocalArticleDataSource,
-    private val country: String,
 ) : ArticleRepository {
 
     private val refreshMutex = Mutex()
 
-    override fun observeArticles(): Flow<ArticleObservation<List<Article>>> {
+    override fun observeArticles(country: NewsCountry): Flow<ArticleObservation<List<Article>>> {
         return flow {
-            emitAll(localDataSource.observeAll())
+            emitAll(localDataSource.observeAll(country))
         }
             .map { entities ->
                 val articles = entities.map { ArticleMapper.mapToDomain(it) }
@@ -50,9 +50,9 @@ class OfflineFirstArticleRepository(
             }
     }
 
-    override fun observeArticle(id: ArticleId): Flow<ArticleObservation<Article?>> {
+    override fun observeArticle(id: ArticleId, country: NewsCountry): Flow<ArticleObservation<Article?>> {
         return flow {
-            emitAll(localDataSource.observeById(id.value))
+            emitAll(localDataSource.observeById(id.value, country))
         }
             .map { entity ->
                 val article = entity?.let { ArticleMapper.mapToDomain(it) }
@@ -65,10 +65,10 @@ class OfflineFirstArticleRepository(
             }
     }
 
-    override suspend fun refreshArticles(): RefreshResult {
+    override suspend fun refreshArticles(country: NewsCountry): RefreshResult {
         return refreshMutex.withLock {
             val remoteResponse = try {
-                remoteDataSource.fetchTopHeadlines(country = country)
+                remoteDataSource.fetchTopHeadlines(country)
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 return@withLock RefreshResult.Failure(mapToSyncError(e))
@@ -89,7 +89,9 @@ class OfflineFirstArticleRepository(
 
             val entities = try {
                 when (val mappingResult = ArticleMapper.mapToDomain(remoteArticles)) {
-                    is ArticleMappingResult.Success -> ArticleMapper.mapToEntities(mappingResult.articles)
+                    is ArticleMappingResult.Success -> {
+                        ArticleMapper.mapToEntities(mappingResult.articles, country)
+                    }
                     is ArticleMappingResult.MalformedData -> {
                         return@withLock RefreshResult.Failure(SyncError.MalformedData)
                     }
@@ -105,7 +107,7 @@ class OfflineFirstArticleRepository(
             }
 
             try {
-                localDataSource.replaceSnapshot(entities)
+                localDataSource.replaceSnapshot(entities, country)
                 RefreshResult.Success
             } catch (e: Exception) {
                 if (e is CancellationException) throw e

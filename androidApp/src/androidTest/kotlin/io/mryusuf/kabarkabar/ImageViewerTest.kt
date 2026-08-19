@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.mryusuf.kabarkabar.domain.model.ArticleId
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import io.mryusuf.kabarkabar.domain.repository.ArticleRepository
 import io.mryusuf.kabarkabar.fakes.FakeArticleRepository
 import io.mryusuf.kabarkabar.presentation.articledetail.ArticleDetailViewModel
@@ -39,7 +40,9 @@ class ImageViewerTest : KoinTest {
     private val testModule = module {
         single<ArticleRepository> { fakeRepository }
         viewModel { ArticleListViewModel(get()) }
-        viewModel { (articleId: ArticleId) -> ArticleDetailViewModel(get(), articleId) }
+        viewModel { (articleId: ArticleId, country: NewsCountry) ->
+            ArticleDetailViewModel(get(), articleId, country)
+        }
     }
 
     @get:Rule(order = 0)
