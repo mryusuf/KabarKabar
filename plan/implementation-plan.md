@@ -102,7 +102,7 @@ inputs Phase 4 presentation code must combine to derive the required blocking
 `RefreshResult.Success` and is covered by the Phase 2 regression suite. No
 production code or Phase 4 work was added in this review.
 
-The clean verification gate passed with 38 Android shared tests, 39 iOS
+The clean verification gate passed with 36 Android shared tests, 37 iOS
 shared tests, and 4 Android application unit tests; shared assemble/check,
 both iOS framework links, Android debug assemble, and Android lint also passed.
 
@@ -132,7 +132,7 @@ both iOS framework links, Android debug assemble, and Android lint also passed.
 V1–V5 plus deterministic regressions for late UI subscription, duplicate
 refresh calls, local observation failure with and without cache, and
 cancellation. The Android application test task passes 15 cases (5 state and
-10 ViewModel); shared tests pass with 38 Android host-test cases and 39 iOS
+10 ViewModel); shared tests pass with 36 Android host-test cases and 37 iOS
 simulator cases. The clean verification gate also passes shared assemble/check,
 Android debug assemble, and Android lint. Phase 4B implementation followed in
 the subsequent Compose work recorded below.
@@ -141,8 +141,8 @@ the subsequent Compose work recorded below.
 implemented. The review found and corrected blocking-error copy that was
 otherwise hidden, raw detail error-string exposure, detail observation flow
 creation during recomposition, optional-image semantics, and a double-decoded
-percent-encoded navigation ID boundary. The clean gate passed 38 Android
-shared tests, 39 iOS-simulator shared tests, 18 Android application unit
+percent-encoded navigation ID boundary. The clean gate passed 36 Android
+shared tests, 37 iOS-simulator shared tests, 18 Android application unit
 tests, shared assemble/check, Android debug assemble, and Android lint. The
 Pixel_9 emulator launched the clean APK and reproduced the presentation-safe
 no-cache offline error without a crash; the configured NewsAPI returned a
@@ -182,7 +182,7 @@ via a Gradle `resolutionStrategy`.
 
 T4 ran individually, T5 ran individually, and both ran together on the
 `Pixel_9` emulator, for 2 instrumented UI tests with 0 failures. The clean
-verification gate passed with 38 Android shared tests, 39 iOS shared tests,
+verification gate passed with 36 Android shared tests, 37 iOS shared tests,
 18 Android application unit tests, and 2 Android instrumented UI tests;
 shared assemble/check, Android debug assemble, and Android lint also passed.
 
@@ -190,16 +190,36 @@ shared assemble/check, Android debug assemble, and Android lint also passed.
 
 ## Phase 6 - Review / Polish
 
-- [ ] Run full test suite.
-- [ ] Review recomposition/list performance.
-- [ ] Review error messages and empty states.
-- [ ] Review accessibility basics.
-- [ ] Check naming and dead code.
-- [ ] Verify API-key hygiene, including git history.
-- [ ] Verify target module/source-set ownership against `specs/architecture.md`.
-- [ ] Test setup instructions from a clean checkout.
+- [x] Run full test suite.
+- [x] Review recomposition/list performance.
+- [x] Review error messages and empty states.
+- [x] Review accessibility basics.
+- [x] Check naming and dead code.
+- [x] Verify API-key hygiene, including git history.
+- [x] Verify target module/source-set ownership against `specs/architecture.md`.
+- [x] Test setup instructions from a clean checkout.
 
-**Exit:** core submission is shippable.
+**Verification (18 August 2026):** An independent candidate clone was created
+from the public `main` clone and patched only with the existing staged Phase 6
+candidate; it had no build cache or `local.properties` initially. The README
+setup was followed with a disposable local key, and the wrapper bootstrapped
+Gradle 9.1.0 from a fresh Gradle home. The exact clean gate passed with 36
+Android shared tests, 37 iOS-simulator shared tests, 18 Android application
+unit tests, shared assemble/check, Android debug assemble, and Android lint.
+The connected gate ran T4 and T5 on `Pixel_9` with 2 tests and 0 failures.
+
+The real-key runtime smoke issued `country=us`, received HTTP 200, rendered
+list rows and available images, refreshed, navigated to detail, and verified
+both app-bar and system back. With Wi-Fi and data explicitly disabled, a
+relaunch rendered the persisted Room snapshot, refresh failure showed a
+non-blocking network message, and cached detail remained available; connectivity
+was restored afterward. Current tracked/index scans found no real key and no
+historical `local.properties`/`secrets.properties`. The public remote is
+anonymous and reachable at `main`, but it still points to the pre-audit commit;
+commit/push and one final anonymous clone are required before submission.
+
+**Exit:** core submission is shippable after candidate commit/push and final
+public-clone verification.
 
 ## Phase 7 - Bonus Only If Core Is Green
 

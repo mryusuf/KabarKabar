@@ -1,0 +1,6 @@
+# local.properties.example
+# Copy this file to local.properties and add your real NewsAPI key.
+# Get your key at https://newsapi.org/
+
+sdk.dir=/path/to/your/android/sdk
+NEWS_API_KEY=YOUR_API_KEY_HERE

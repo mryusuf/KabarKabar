@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phases 0–5 are complete. Core shippable requirements are satisfied. Phase 6 review and Phase 7 bonus work remain pending.
+> Status: Phases 0–6 are complete locally. The verified candidate still requires commit/push and one final anonymous clone check. Phase 7 bonus work has not started.
 
 ## Goal
 
@@ -15,7 +15,7 @@ Demonstrate:
 - meaningful automated tests,
 - responsible Android Studio Agent Mode usage.
 
-## Planned Core Features
+## Core Features
 
 - [x] Article list: title, short description, image, publication date
 - [x] Pull-to-refresh
@@ -109,6 +109,12 @@ Do **not** commit a real API key.
 
 Configure the root `local.properties` file, which is ignored by Git:
 
+```bash
+cp local.properties.example local.properties
+```
+
+Replace the example SDK path and API key in the copied file:
+
 ```properties
 sdk.dir=/absolute/path/to/your/Android/sdk
 NEWS_API_KEY=your_real_development_key
@@ -116,7 +122,7 @@ NEWS_API_KEY=your_real_development_key
 
 `androidApp/build.gradle.kts` reads `NEWS_API_KEY` locally and exposes it as
 `BuildConfig.NEWS_API_KEY` for the application composition root. The Android
-application composes the Phase 4 ViewModels, Room-backed repository, and
+application composes the Android-owned ViewModels, Room-backed repository, and
 Navigation/Coil presentation flow. The shared Phase 1–3 domain/data behavior
 is covered by shared tests.
 
@@ -136,6 +142,12 @@ of scope; empty-state coverage uses deterministic test data.
 ## Build & Run
 
 Run these commands from the repository root after configuring `local.properties`:
+
+Prerequisites are an Android SDK with the compile/target SDK configured by the
+project, a Java 17–25 launcher, and network access for the first Gradle
+bootstrap. The checked-in Gradle daemon configuration targets Java 21. An
+attached Android device or emulator is required only for the instrumented
+test and manual runtime commands.
 
 ```bash
 # Clean build of the Android app and shared KMP module.
@@ -165,7 +177,8 @@ Run these commands from the repository root after configuring `local.properties`
 The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 10
 `ArticleListViewModelTest` cases, 2 `ArticleDetailViewModelTest` cases, and 1
 navigation boundary test (18 total). The instrumented task runs 2 Compose UI
-acceptance tests (T4 and T5).
+acceptance tests (T4 and T5). The shared logic suite currently runs 36 tests
+on Android and 37 on iOS.
 
 To manually verify the current Android application on a connected device:
 
@@ -256,19 +269,32 @@ Potential bonuses:
 - full-screen image viewer,
 - accessibility polish.
 
-## Known Issues / Future Improvements
+## Known Limitations
 
-Populate honestly before submission.
+- **Offline Images**: Articles images depend on the Coil disk cache. If an image was not loaded while online, it will not be available offline. Full offline image persistence is out of scope.
+- **NewsAPI Content**: NewsAPI typically provides a short description or snippet rather than the full article body. The app displays what is available from the API.
+- **Country Availability**: Some countries may return empty results from NewsAPI depending on current news volume or provider availability. `country=us` is used by default as it is currently the most reliable.
+
+## Future Work / Bonuses
+- **Country Selector**: Allow users to change the news country from within the app.
+- **Pagination**: Implement "Load More" for the article list.
+- **Dark Mode**: Complete the Material 3 dark theme support.
+- **Accessibility**: Conduct a full WCAG audit and improve screen reader support.
+- **iOS Application**: Build a native SwiftUI application using the shared logic.
 
 ## Submission Checklist
 
-- [ ] Public GitHub/GitLab repository
-- [ ] Clean checkout is runnable after API-key setup
-- [ ] No real API key in repository or git history
-- [ ] Required behavior works
-- [ ] Required tests pass
-- [ ] README setup instructions verified on a clean state
-- [ ] Architecture and trade-offs documented
+- [x] Public GitHub/GitLab repository
+- [x] Clean checkout is runnable after API-key setup
+- [x] No real API key in repository or git history
+- [x] Required behavior works
+- [x] Required tests pass
+- [x] README setup instructions verified on a clean state
+- [x] Architecture and trade-offs documented
 - [x] 3+ Android Studio Agent Mode tasks documented
 - [x] At least 1 real AI mistake/correction documented
-- [ ] Known issues stated explicitly
+- [x] Known issues stated explicitly
+
+The checklist describes the locally verified candidate. Because the candidate
+is not yet pushed, repeat the anonymous fresh-clone check after commit/push
+before submitting.
