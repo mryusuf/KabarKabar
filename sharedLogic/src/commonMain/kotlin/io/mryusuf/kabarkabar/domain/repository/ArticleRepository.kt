@@ -41,4 +41,21 @@ interface ArticleRepository {
      * @return [RefreshResult] classifying the outcome into domain-safe categories.
      */
     suspend fun refreshArticles(country: NewsCountry): RefreshResult
+
+    /**
+     * Triggers a remote synchronization to fetch the next page for the given [country].
+     *
+     * Fetches the next segment of articles, validates/maps them, and appends them
+     * to the local headline snapshot on success.
+     * Failure to synchronize preserves the existing cache for that country.
+     *
+     * @return [RefreshResult] classifying the outcome.
+     */
+    suspend fun loadMoreArticles(country: NewsCountry): RefreshResult
+
+    /**
+     * Returns true if the repository knows there are more articles available to load
+     * for the given [country] based on the last successful response's total results.
+     */
+    fun canLoadMore(country: NewsCountry): Boolean
 }

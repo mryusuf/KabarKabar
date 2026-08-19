@@ -4,11 +4,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -28,6 +31,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -135,7 +139,25 @@ fun ArticleListScreen(
                 }
 
                 is ArticleListContent.Data -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    val lazyListState = rememberLazyListState()
+                    val shouldLoadMore by remember {
+                        derivedStateOf {
+                            val lastVisibleItem = lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()
+                                ?: return@derivedStateOf false
+                            lastVisibleItem.index >= lazyListState.layoutInfo.totalItemsCount - 2
+                        }
+                    }
+
+                    LaunchedEffect(shouldLoadMore) {
+                        if (shouldLoadMore && uiState.hasMore && !uiState.isPaging && !uiState.isPagingError) {
+                            viewModel.loadMore()
+                        }
+                    }
+
+                    LazyColumn(
+                        state = lazyListState,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                         itemsIndexed(
                             items = content.articles,
                             key = { _, article -> article.id.value }
@@ -158,6 +180,15 @@ fun ArticleListScreen(
                                     color = MaterialTheme.colorScheme.outlineVariant
                                 )
                             }
+                        }
+
+                        item {
+                            PagingFooter(
+                                isPaging = uiState.isPaging,
+                                isError = uiState.isPagingError,
+                                hasMore = uiState.hasMore,
+                                onRetry = viewModel::loadMore
+                            )
                         }
                     }
                 }
@@ -186,6 +217,32 @@ fun ArticleListScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PagingFooter(
+    isPaging: Boolean,
+    isError: Boolean,
+    hasMore: Boolean,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!isPaging && !isError && !hasMore) return
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isPaging) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+        } else {
+            TextButton(onClick = onRetry) {
+                Text(stringResource(R.string.retry_load_more))
             }
         }
     }

@@ -11,15 +11,25 @@ import io.mryusuf.kabarkabar.domain.model.NewsCountry
  * Data source for fetching articles from a remote API.
  */
 interface RemoteArticleDataSource {
-    suspend fun fetchTopHeadlines(country: NewsCountry): NewsApiResponseDto
+    suspend fun fetchTopHeadlines(
+        country: NewsCountry,
+        page: Int = 1,
+        pageSize: Int = 20,
+    ): NewsApiResponseDto
 }
 
 class KtorRemoteArticleDataSource(
     private val httpClient: HttpClient
 ) : RemoteArticleDataSource {
-    override suspend fun fetchTopHeadlines(country: NewsCountry): NewsApiResponseDto {
+    override suspend fun fetchTopHeadlines(
+        country: NewsCountry,
+        page: Int,
+        pageSize: Int,
+    ): NewsApiResponseDto {
         return httpClient.get("/v2/top-headlines") {
             parameter("country", country.code)
+            parameter("page", page)
+            parameter("pageSize", pageSize)
         }.body()
     }
 }

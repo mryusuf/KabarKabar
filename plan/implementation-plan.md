@@ -231,7 +231,7 @@ Priority order:
 2. [x] dark mode polish (Phase 7A system-theme review)
 3. [ ] iOS shared target or minimal iOS proof if low-risk
 4. [x] accessibility baseline (Phase 7A); full audit remains future work
-5. [ ] pagination
+5. [x] pagination (Phase 7D reviewed locally)
 6. [x] full-screen image viewer (Phase 7B)
 7. [x] country selection and country-aware offline correctness (Phase 7C)
 
@@ -261,6 +261,15 @@ clean gate passed with 36 Android shared tests, 37 iOS simulator shared tests,
 21 Android application unit tests, and 13 Pixel_9 connected tests. `git diff --check` also
 passed. Detail -> Viewer -> Detail, system back, list back-stack preservation,
 missing/failed image safety, and no article refresh on viewer open were covered.
+
+**Phase 7D implementation and adversarial remediation (19 August 2026):**
+Pagination was reviewed through the footer/scroll trigger, ViewModel, repository,
+remote metadata, Room append, and persisted observation path. The initial
+candidate required fixes for stale page completions, unknown/invalid paging
+metadata, cross-page duplicate replacement, and missing UI retry coverage.
+The final local gate passed with 56 Android shared tests, 58 iOS simulator tests,
+34 Android application unit tests, and 17 Pixel_9 connected tests. The candidate
+is still uncommitted and Phase 7E remains intentionally untouched.
 
 ## Suggested Calendar
 

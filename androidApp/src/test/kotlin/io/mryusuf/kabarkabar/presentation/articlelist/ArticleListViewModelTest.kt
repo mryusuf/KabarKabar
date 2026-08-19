@@ -15,7 +15,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -426,6 +428,198 @@ class ArticleListViewModelTest {
         assertIs<ArticleListContent.Empty>(viewModel.uiState.value.content)
     }
 
+    @Test
+    fun `loadMore triggers repository and updates isPaging`() = runTest {
+        val articles = listOf(createFakeArticle("1"))
+        repository.emitObservation(ArticleObservation.Data(articles), NewsCountry.US)
+        repository.setRefreshResult(RefreshResult.Success)
+        viewModel = ArticleListViewModel(repository)
+        runCurrent()
+        repository.completeRefresh()
+        advanceUntilIdle()
+
+        // When loadMore is called
+        repository.setLoadMoreResult(RefreshResult.Success)
+        viewModel.loadMore()
+
+        runCurrent()
+        // Then isPaging is true
+        assertTrue(viewModel.uiState.value.isPaging)
+        assertEquals(1, repository.loadMoreCallCount)
+
+        repository.completeLoadMore()
+        advanceUntilIdle()
+
+        // Then isPaging is false
+        assertEquals(false, viewModel.uiState.value.isPaging)
+        assertEquals(false, viewModel.uiState.value.isPagingError)
+    }
+
+    @Test
+    fun `loadMore failure updates isPagingError`() = runTest {
+        val articles = listOf(createFakeArticle("1"))
+        repository.emitObservation(ArticleObservation.Data(articles), NewsCountry.US)
+        repository.setRefreshResult(RefreshResult.Success)
+        viewModel = ArticleListViewModel(repository)
+        runCurrent()
+        repository.completeRefresh()
+        advanceUntilIdle()
+
+        // When loadMore fails
+        repository.setLoadMoreResult(RefreshResult.Failure(SyncError.Network))
+        viewModel.loadMore()
+
+        runCurrent()
+        repository.completeLoadMore()
+        advanceUntilIdle()
+
+        // Then isPagingError is true
+        assertEquals(false, viewModel.uiState.value.isPaging)
+        assertEquals(true, viewModel.uiState.value.isPagingError)
+    }
+
+    @Test
+    fun `refresh invalidates an active load-more result`() = runTest {
+        val articles = listOf(createFakeArticle("cached"))
+        repository.emitObservation(ArticleObservation.Data(articles), NewsCountry.US)
+        repository.setRefreshResult(RefreshResult.Success)
+        viewModel = ArticleListViewModel(repository)
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        runCurrent()
+        repository.completeRefresh()
+        advanceUntilIdle()
+
+        repository.setLoadMoreResult(RefreshResult.Failure(SyncError.Network))
+        viewModel.loadMore()
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isPaging)
+
+        viewModel.refresh()
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isRefreshing)
+        assertEquals(false, viewModel.uiState.value.isPaging)
+
+        repository.completeRefresh()
+        advanceUntilIdle()
+        repository.completeLoadMore()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertIs<ArticleListContent.Data>(state.content)
+        assertEquals(false, state.isPaging)
+        assertEquals(false, state.isPagingError)
+    }
+
+    @Test
+    fun `late load-more result after refresh is ignored`() = runTest {
+        val countryRepository = NonCancellablePagingRepository(createFakeArticle("cached"))
+        viewModel = ArticleListViewModel(countryRepository)
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        runCurrent()
+
+        viewModel.loadMore()
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isPaging)
+
+        viewModel.refresh()
+        runCurrent()
+
+        countryRepository.completeNextLoadMore(RefreshResult.Failure(SyncError.Network))
+        runCurrent()
+
+        val state = viewModel.uiState.value
+        assertIs<ArticleListContent.Data>(state.content)
+        assertEquals(false, state.isRefreshing)
+        assertEquals(false, state.isPaging)
+        assertEquals(false, state.isPagingError)
+    }
+
+    @Test
+    fun `late load-more result after returning to a country is ignored`() = runTest {
+        val countryRepository = NonCancellablePagingRepository(createFakeArticle("us-1"))
+        viewModel = ArticleListViewModel(countryRepository)
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        runCurrent()
+
+        viewModel.loadMore()
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isPaging)
+
+        viewModel.onCountrySelected(NewsCountry.ID)
+        runCurrent()
+        viewModel.onCountrySelected(NewsCountry.US)
+        runCurrent()
+
+        countryRepository.completeNextLoadMore(RefreshResult.Failure(SyncError.Network))
+        runCurrent()
+
+        val state = viewModel.uiState.value
+        assertEquals(NewsCountry.US, state.selectedCountry)
+        assertEquals(false, state.isPaging)
+        assertEquals(false, state.isPagingError)
+    }
+
+    @Test
+    fun `loadMore is ignored without displayed data`() = runTest {
+        repository.emitObservation(ArticleObservation.Data(emptyList()), NewsCountry.US)
+        repository.setRefreshResult(RefreshResult.Failure(SyncError.Network))
+        viewModel = ArticleListViewModel(repository)
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        runCurrent()
+        repository.completeRefresh()
+        advanceUntilIdle()
+
+        viewModel.loadMore()
+        runCurrent()
+
+        assertEquals(0, repository.loadMoreCallCount)
+        assertIs<ArticleListContent.Error>(viewModel.uiState.value.content)
+    }
+
+    @Test
+    fun `loadMore is ignored if hasMore is false`() = runTest {
+        viewModel = ArticleListViewModel(repository)
+        repository.hasMoreMap[NewsCountry.US] = false
+
+        viewModel.loadMore()
+        runCurrent()
+
+        assertEquals(0, repository.loadMoreCallCount)
+    }
+
+    @Test
+    fun `duplicate load-more triggers start only one request`() = runTest {
+        repository.emitObservation(
+            ArticleObservation.Data(listOf(createFakeArticle("1"))),
+            NewsCountry.US,
+        )
+        repository.setRefreshResult(RefreshResult.Success)
+        viewModel = ArticleListViewModel(repository)
+        runCurrent()
+        repository.completeRefresh()
+        advanceUntilIdle()
+
+        viewModel.loadMore()
+        viewModel.loadMore()
+        runCurrent()
+
+        assertEquals(1, repository.loadMoreCallCount)
+        repository.completeLoadMore()
+        advanceUntilIdle()
+    }
+
     private fun createFakeArticle(id: String) = Article(
         id = ArticleId.fromCanonicalUrl("https://example.com/$id"),
         url = "https://example.com/$id",
@@ -441,8 +635,12 @@ class FakeArticleRepository : ArticleRepository {
         mutableMapOf<NewsCountry, MutableSharedFlow<ArticleObservation<List<Article>>>>()
     private var refreshResult: RefreshResult = RefreshResult.Success
     private val refreshSignal = MutableSharedFlow<Unit>()
+    private val loadMoreSignal = MutableSharedFlow<Unit>()
     var refreshCallCount: Int = 0
+    var loadMoreCallCount: Int = 0
     var refreshException: CancellationException? = null
+    var hasMoreMap = mutableMapOf<NewsCountry, Boolean>()
+    private var loadMoreResult: RefreshResult = RefreshResult.Success
 
     private fun getOrCreateObservation(country: NewsCountry) =
         countryObservations.getOrPut(country) { MutableSharedFlow(replay = 1) }
@@ -458,8 +656,16 @@ class FakeArticleRepository : ArticleRepository {
         refreshResult = result
     }
 
+    fun setLoadMoreResult(result: RefreshResult) {
+        loadMoreResult = result
+    }
+
     suspend fun completeRefresh() {
         refreshSignal.emit(Unit)
+    }
+
+    suspend fun completeLoadMore() {
+        loadMoreSignal.emit(Unit)
     }
 
     override fun observeArticles(country: NewsCountry): Flow<ArticleObservation<List<Article>>> =
@@ -474,6 +680,50 @@ class FakeArticleRepository : ArticleRepository {
         refreshException?.let { throw it }
         refreshSignal.first()
         return refreshResult
+    }
+
+    override suspend fun loadMoreArticles(country: NewsCountry): RefreshResult {
+        loadMoreCallCount += 1
+        loadMoreSignal.first()
+        return loadMoreResult
+    }
+
+    override fun canLoadMore(country: NewsCountry): Boolean = hasMoreMap[country] ?: true
+}
+
+private class NonCancellablePagingRepository(
+    initialArticle: Article,
+) : ArticleRepository {
+    private val observations = mapOf(
+        NewsCountry.US to MutableStateFlow<ArticleObservation<List<Article>>>(
+            ArticleObservation.Data(listOf(initialArticle))
+        ),
+        NewsCountry.ID to MutableStateFlow<ArticleObservation<List<Article>>>(
+            ArticleObservation.Data(emptyList())
+        ),
+    )
+    private val pendingLoadMores = ArrayDeque<CompletableDeferred<RefreshResult>>()
+
+    override fun observeArticles(country: NewsCountry): Flow<ArticleObservation<List<Article>>> =
+        observations.getValue(country)
+
+    override fun observeArticle(
+        id: ArticleId,
+        country: NewsCountry,
+    ): Flow<ArticleObservation<Article?>> = flowOf(ArticleObservation.Data(null))
+
+    override suspend fun refreshArticles(country: NewsCountry): RefreshResult = RefreshResult.Success
+
+    override suspend fun loadMoreArticles(country: NewsCountry): RefreshResult {
+        val result = CompletableDeferred<RefreshResult>()
+        pendingLoadMores.addLast(result)
+        return withContext(NonCancellable) { result.await() }
+    }
+
+    override fun canLoadMore(country: NewsCountry): Boolean = true
+
+    fun completeNextLoadMore(result: RefreshResult) {
+        pendingLoadMores.removeFirst().complete(result)
     }
 }
 
@@ -508,6 +758,10 @@ private class NonCancellableCountryRepository : ArticleRepository {
         }
         return pending.result
     }
+
+    override suspend fun loadMoreArticles(country: NewsCountry): RefreshResult = error("Not needed")
+
+    override fun canLoadMore(country: NewsCountry): Boolean = true
 
     fun emit(country: NewsCountry, observation: ArticleObservation<List<Article>>) {
         observationFor(country).tryEmit(observation)

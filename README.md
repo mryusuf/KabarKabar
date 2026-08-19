@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phases 0–6, 7A, 7B, and the reviewed 7C candidate are complete locally. The candidate still requires commit/push and one final anonymous clone check.
+> Status: Phases 0–6, 7A, 7B, 7C, and the reviewed 7D candidate are complete locally. Phase 7E remains not started. The candidate still requires commit/push and one final anonymous clone check.
 
 ## Goal
 
@@ -61,6 +61,23 @@ ViewModel race where a late refresh from the previous country could block or
 classify the newly selected country. Country selection is not persisted across
 launches; a new launch defaults to US. ID may legitimately show Empty when
 NewsAPI has no current headlines, without affecting the US cache.
+
+## Phase 7D Review Status
+
+- [x] NewsAPI `page=1`/`pageSize=20` refresh and next-page requests
+- [x] response metadata validation and country-scoped has-more state
+- [x] transactional persisted append with stable-ID first-wins dedupe
+- [x] refresh/page separation and stale-response invalidation
+- [x] duplicate-trigger, refresh/page, country/page, and late-response tests
+- [x] non-blocking progress/failure footer and end-of-list trigger
+- [x] D1–D6 regression coverage plus Pixel_9 pagination UI tests
+
+The 7D review found that a mutex alone did not prevent stale ViewModel state or
+a page response from appending after a newer refresh began. Paging now uses
+country-scoped operation generations, ViewModel job tokens, and a Room
+transaction with conflict-ignore inserts. A failed page leaves the visible list
+intact and returns to a simple `Load more` action; it never becomes a blocking
+list error. Phase 7E remains out of scope for this checkpoint.
 
 ## Tech Stack
 
@@ -206,12 +223,12 @@ test and manual runtime commands.
   -Pandroid.testInstrumentationRunnerArguments.class=io.mryusuf.kabarkabar.OfflineBehaviorTest
 ```
 
-The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 14
+The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 22
 `ArticleListViewModelTest` cases, 2 `ArticleDetailViewModelTest` cases, 2
-`ThemeTest` cases, and 3 navigation boundary tests (26 total). The
-instrumented task runs 15 tests, including T4, T5, Phase 7A state checks, the
-Phase 7B viewer matrix, country switching, and Room migration. The shared logic
-suite currently runs 45 tests on Android and 47 on iOS.
+`ThemeTest` cases, and 3 navigation boundary tests (34 total). The
+instrumented task runs 17 tests, including T4, T5, Phase 7A state checks, the
+Phase 7B viewer matrix, country switching, Room migration, and pagination. The
+shared logic suite currently runs 56 tests on Android and 58 on iOS.
 
 To manually verify the current Android application on a connected device:
 
@@ -226,7 +243,8 @@ adb shell am start -n io.mryusuf.kabarkabar/.MainActivity
 - Successful remote synchronization writes to Room.
 - UI observes local persisted state rather than rendering the raw network response.
 - The repository contract is `observeArticles(country)`, `observeArticle(id, country)`, and
-  `refreshArticles(country)`, where `country` is the shared US/ID model.
+  `refreshArticles(country)`, `loadMoreArticles(country)`, and
+  `canLoadMore(country)`, where `country` is the shared US/ID model.
 - Each article has a stable deterministic local ID derived from its canonical URL; Navigation passes the ID, not the whole article.
 - A valid successful empty response may replace the previous snapshot and produces the Empty state.
 - Existing cache survives remote refresh failure.
@@ -302,7 +320,7 @@ Potential bonuses:
 - [x] country selection and country-aware offline isolation (Phase 7C),
 - [ ] commonTest coverage,
 - [ ] shared iOS target / iOS app if practical,
-- [ ] pagination,
+- [x] pagination (Phase 7D),
 - [ ] full accessibility audit beyond the Phase 7A baseline.
 
 ## Known Limitations
@@ -313,7 +331,8 @@ Potential bonuses:
 
 ## Future Work / Bonuses
 - **Country Selection Persistence**: Preserve the selected country across launches; 7C currently defaults to US on a new launch.
-- **Pagination**: Implement "Load More" for the article list.
+- **Pagination**: Paging is implemented for the Android list; paging metadata is
+  kept in the repository instance and is reset by a successful refresh.
 - **Accessibility**: Conduct a full WCAG audit and improve screen reader support beyond the Phase 7A baseline.
 - **iOS Application**: Build a native SwiftUI application using the shared logic.
 

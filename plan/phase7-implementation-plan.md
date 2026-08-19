@@ -4,7 +4,7 @@
 
 - Baseline: `release-v1.0.0`
 - Baseline meaning: audited Phase 0–6 submission-safe release.
-- Phase 7: 7A, 7B, and the reviewed 7C candidate are complete locally; 7D and later remain NOT STARTED.
+- Phase 7: 7A, 7B, 7C, and the reviewed 7D candidate are complete locally; 7E remains NOT STARTED.
 - Final target: consider `release-v1.1.0` only after whole-Phase-7 audit and clean-clone verification.
 - Phase 8 modularization: deferred until after submission.
 
@@ -135,26 +135,49 @@ The focused and regression evidence is:
   anonymous clone remains a post-commit submission gate because this candidate
   is intentionally still uncommitted.
 
-7D remains not started: no page/pageSize, append, load-more, or paging metadata
-was added.
-
 # Phase 7D — Pagination / Load More
 
-- [ ] explicit page/pageSize support
-- [ ] has-more from response metadata
-- [ ] refresh/load-more separate
-- [ ] page-1 refresh resets coherently
-- [ ] next page appends persisted data
-- [ ] deterministic dedupe
-- [ ] list visible while loading
-- [ ] footer progress
-- [ ] failure -> simple Load more button
-- [ ] no blocking pagination error
-- [ ] duplicate triggers controlled
-- [ ] country isolation preserved
-- [ ] D1–D6 tests
-- [ ] runtime QA
-- [ ] Codex 7D gate: `SAFE TO START PHASE 7E: YES`
+- [x] explicit page/pageSize support
+- [x] has-more from response metadata
+- [x] refresh/load-more separate
+- [x] page-1 refresh resets coherently
+- [x] next page appends persisted data
+- [x] deterministic dedupe
+- [x] list visible while loading
+- [x] footer progress
+- [x] failure -> simple Load more button
+- [x] no blocking pagination error
+- [x] duplicate triggers controlled
+- [x] country isolation preserved
+- [x] D1–D6 tests plus adversarial race regressions
+- [x] runtime QA
+- [x] Codex 7D gate: `SAFE TO START PHASE 7E: YES`
+
+## Phase 7D Codex adversarial review and remediation — 19 August 2026
+
+The initial pagination candidate was not accepted unchanged. Focused RED tests
+found stale page completions leaking paging error state after refresh/country
+switch, page metadata accepting a negative total, first-seen duplicate content
+being replaced by a later page, and unknown paging state defaulting to loadable.
+
+The remediation now:
+
+- sends page 1/page size 20 and validates status, metadata, and articles before
+  persistence;
+- keeps paging state and operation generations scoped per country, with a
+  per-country mutex and stale-response check before append;
+- appends inside an explicit Room transaction using conflict-ignore semantics,
+  preserving the first committed row for duplicate ArticleIds;
+- cancels and tokenizes ViewModel page jobs on refresh/country changes, while
+  keeping cached rows visible and exposing only a non-blocking footer failure;
+- provides deterministic Pixel_9 append and page-failure footer coverage.
+
+The clean gate passed with zero failures: 56 Android shared tests, 58 iOS
+simulator shared tests, 34 Android application unit tests, shared assemble/check,
+Android debug assemble, and Android lint. The full Pixel_9 connected suite passed
+17 tests with 0 failures, including the new pagination tests. `git diff --check`
+passed. The candidate remains intentionally uncommitted; commit/push and a final
+anonymous clone remain submission gates. Phase 7E was not started.
 
 # Phase 7E — Native iOS UI
 

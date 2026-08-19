@@ -19,8 +19,19 @@ interface ArticleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(articles: List<ArticleEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertNewArticles(articles: List<ArticleEntity>)
+
     @Query("DELETE FROM articles WHERE countryCode = :countryCode")
     suspend fun deleteAll(countryCode: String)
+
+    @Transaction
+    suspend fun appendAll(articles: List<ArticleEntity>, countryCode: String) {
+        require(articles.all { it.countryCode == countryCode }) {
+            "All appended articles must belong to $countryCode"
+        }
+        insertNewArticles(articles)
+    }
 
     @Transaction
     suspend fun replaceAll(articles: List<ArticleEntity>, countryCode: String) {

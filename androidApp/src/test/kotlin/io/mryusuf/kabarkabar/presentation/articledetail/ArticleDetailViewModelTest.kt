@@ -58,4 +58,8 @@ private class FakeArticleRepository(
         flowOf(observation)
 
     override suspend fun refreshArticles(country: NewsCountry): RefreshResult = RefreshResult.Success
+
+    override suspend fun loadMoreArticles(country: NewsCountry): RefreshResult = RefreshResult.Success
+
+    override fun canLoadMore(country: NewsCountry): Boolean = true
 }

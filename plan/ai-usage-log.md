@@ -289,12 +289,56 @@ Agent Mode checkpoint above.
 
 ---
 
+## Entry 9
+
+**Task/category:**
+Phase 7D: Pagination / Load More
+
+**Prompt / context given to Agent Mode:**
+Implement pagination for the News Reader using NewsAPI's `page` and `pageSize` parameters. Update the `ArticleRepository` to support `loadMoreArticles(country)` and `canLoadMore(country)`. Manage isolated paging state per country in the repository. Update the `ArticleListViewModel` and `ArticleListScreen` to support a non-blocking "Load more" footer and trigger loading at the end of the list. Implement D1-D6 tests.
+
+**What the agent produced:**
+Updated `ArticleRepository.kt`, `RemoteArticleDataSource.kt`, `LocalArticleDataSource.kt`, `OfflineFirstArticleRepository.kt`, `ArticleListUiState.kt`, `ArticleListViewModel.kt`, `ArticleListScreen.kt`, and `strings.xml`. Updated and added repository and ViewModel unit tests.
+
+**Initial review recorded at the Agent Mode checkpoint:**
+The checkpoint reported country-isolated paging, independent refresh/load-more
+state, an end-of-list trigger, and a graceful failure fallback. A later Codex
+adversarial review did not accept that checkpoint as final evidence; the RED
+tests below found stale-operation and metadata/dedupe defects.
+
+**What I changed or rejected, and why:**
+1. **Conflicting Mutex logic**: I initially considered using separate mutexes for refresh and load-more, but realized this could lead to race conditions when modifying the same local database snapshot. I decided to reuse the `refreshMutex` to ensure atomic modifications of a country's article set.
+2. **Missing Test Data Helper**: The repository unit tests initially failed to compile because I forgot to include the `articleDto` helper function in the test file when adding the D1-D4 tests. I added the helper to restore the build.
+3. **PagingFooter Logic Warning**: The initial `PagingFooter` implementation had a redundant `if (isError)` check that triggered a "condition is always true" lint warning due to the preceding guard clause. I simplified the logic to use a `when` block for better clarity and to satisfy the linter.
+
+**Validation reported for the Agent Mode checkpoint:**
+The entry reported the full gate command and simulated UI checks. That report is
+retained as historical Agent Mode evidence, not as the final 7D approval.
+
+---
+
+## Codex 7D adversarial remediation
+
+The follow-up review wrote failing tests before changing production behavior. It
+reproduced stale page results after refresh and country switch, duplicate
+load-more triggers, page failure/cache preservation, invalid page metadata, and
+cross-page duplicate replacement. The remediation added repository generation
+checks, per-country mutexes, transactional conflict-ignore append, ViewModel
+page-job tokens, and deterministic Pixel_9 pagination tests.
+
+Final local validation passed with 56 Android shared tests, 58 iOS simulator
+tests, 34 Android application unit tests, and 17 Pixel_9 connected tests. This
+Codex work is separate from the Android Studio Agent Mode evidence above; it did
+not add a new Agent Mode task.
+
+---
+
 ## Evidence status
 
-Entries 1–8 are recorded above. Entry 2, Entry 3, Entry 6, and Entry 8 are
-meaningful Android Studio Agent Mode tasks. Entry 8 includes documented
-mistakes regarding duplicate code, test isolation, and cross-platform
-migration registration that were identified and corrected during implementation.
+Entries 1–9 are recorded above. Entry 2, Entry 3, Entry 6, Entry 8, and Entry 9 are
+meaningful Android Studio Agent Mode tasks. Entry 9 is an historical checkpoint;
+the subsequent Codex review and remediation are documented separately and are
+not presented as Agent Mode evidence.
 
 ## Good Candidate Tasks
 

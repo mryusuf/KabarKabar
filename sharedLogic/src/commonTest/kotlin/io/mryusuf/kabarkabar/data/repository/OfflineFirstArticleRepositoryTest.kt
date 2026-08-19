@@ -54,6 +54,8 @@ class OfflineFirstArticleRepositoryTest {
 
         assertEquals(RefreshResult.Success, result)
         assertEquals("id", remoteDataSource.requestedCountry)
+        assertEquals(1, remoteDataSource.requestedPage)
+        assertEquals(20, remoteDataSource.requestedPageSize)
         assertEquals(1, localDataSource.articles.value.size)
         assertEquals("id", localDataSource.articles.value[0].countryCode)
         assertEquals("Title", localDataSource.articles.value[0].title)
@@ -431,6 +433,306 @@ class OfflineFirstArticleRepositoryTest {
         assertEquals(ArticleObservation.Data(null), observation)
     }
 
+    @Test
+    fun loadMoreArticles_success_appendsArticlesAndUpdatesPaging() = runTest {
+        // Initial refresh
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = (1..20).map { articleDto(it) }
+        )
+        repository.refreshArticles(NewsCountry.US)
+
+        assertEquals(20, localDataSource.articles.value.size)
+        assertTrue(repository.canLoadMore(NewsCountry.US))
+
+        // Load more
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = (21..40).map { articleDto(it) }
+        )
+        val result = repository.loadMoreArticles(NewsCountry.US)
+
+        assertEquals(RefreshResult.Success, result)
+        assertEquals(2, remoteDataSource.requestedPage)
+        assertEquals(40, localDataSource.articles.value.size)
+        // (2 * 20) < 40 is false, so hasMore should be false
+        assertEquals(false, repository.canLoadMore(NewsCountry.US))
+    }
+
+    @Test
+    fun loadMoreArticles_deduplicatesByStableId() = runTest {
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(articleDto(1, title = "First title"))
+        )
+        repository.refreshArticles(NewsCountry.US)
+
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(
+                articleDto(1, title = "Later duplicate title"),
+                articleDto(2),
+            )
+        )
+        repository.loadMoreArticles(NewsCountry.US)
+
+        assertEquals(2, localDataSource.articles.value.size)
+        assertEquals(
+            "First title",
+            localDataSource.articles.value.first { it.id == ArticleId.fromCanonicalUrl("https://example.com/1").value }
+                .title,
+        )
+    }
+
+    @Test
+    fun canLoadMore_is_false_until_page_one_metadata_is_known() = runTest {
+        assertEquals(false, repository.canLoadMore(NewsCountry.US))
+    }
+
+    @Test
+    fun loadMoreArticles_rejects_negative_total_without_mutating_cache() = runTest {
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(articleDto(1)),
+        )
+        repository.refreshArticles(NewsCountry.US)
+        val before = localDataSource.articles.value
+
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = -1,
+            articles = emptyList(),
+        )
+
+        assertEquals(
+            RefreshResult.Failure(SyncError.MalformedData),
+            repository.loadMoreArticles(NewsCountry.US),
+        )
+        assertEquals(before, localDataSource.articles.value)
+        assertEquals(true, repository.canLoadMore(NewsCountry.US))
+    }
+
+    @Test
+    fun loadMoreArticles_remoteApiError_preserves_cache_and_page_state() = runTest {
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(articleDto(1)),
+        )
+        repository.refreshArticles(NewsCountry.US)
+        val before = localDataSource.articles.value
+
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "error",
+            totalResults = null,
+            articles = emptyList(),
+        )
+
+        assertEquals(
+            RefreshResult.Failure(SyncError.RemoteApi),
+            repository.loadMoreArticles(NewsCountry.US),
+        )
+        assertEquals(before, localDataSource.articles.value)
+        assertEquals(true, repository.canLoadMore(NewsCountry.US))
+    }
+
+    @Test
+    fun loadMoreArticles_persistenceFailure_preserves_cache_and_retries_same_page() = runTest {
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(articleDto(1)),
+        )
+        repository.refreshArticles(NewsCountry.US)
+        val before = localDataSource.articles.value
+
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(articleDto(2)),
+        )
+        localDataSource.appendException = IllegalStateException("append failed")
+
+        assertEquals(
+            RefreshResult.Failure(SyncError.Persistence),
+            repository.loadMoreArticles(NewsCountry.US),
+        )
+        assertEquals(before, localDataSource.articles.value)
+        assertEquals(true, repository.canLoadMore(NewsCountry.US))
+
+        localDataSource.appendException = null
+        assertEquals(RefreshResult.Success, repository.loadMoreArticles(NewsCountry.US))
+        assertEquals(2, remoteDataSource.requestedPage)
+    }
+
+    @Test
+    fun refresh_after_pagination_replaces_later_pages() = runTest {
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(articleDto(1)),
+        )
+        repository.refreshArticles(NewsCountry.US)
+
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(articleDto(2)),
+        )
+        repository.loadMoreArticles(NewsCountry.US)
+        assertEquals(2, localDataSource.articles.value.size)
+
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 1,
+            articles = listOf(articleDto(3)),
+        )
+        assertEquals(RefreshResult.Success, repository.refreshArticles(NewsCountry.US))
+
+        assertEquals(listOf("Article 3"), localDataSource.articles.value.map { it.title })
+        assertEquals(false, repository.canLoadMore(NewsCountry.US))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun country_refresh_is_not_blocked_by_another_country_page() = runTest {
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(articleDto(1)),
+        )
+        repository.refreshArticles(NewsCountry.US)
+
+        val usPageGate = CompletableDeferred<Unit>()
+        remoteDataSource.fetchHandler = { requestNumber ->
+            if (requestNumber == 2) {
+                usPageGate.await()
+            }
+            NewsApiResponseDto(
+                status = "ok",
+                totalResults = 40,
+                articles = listOf(articleDto(requestNumber)),
+            )
+        }
+
+        val usPage = async { repository.loadMoreArticles(NewsCountry.US) }
+        runCurrent()
+        val idRefresh = async { repository.refreshArticles(NewsCountry.ID) }
+        runCurrent()
+
+        assertTrue(idRefresh.isCompleted)
+        assertEquals(RefreshResult.Success, idRefresh.await())
+
+        usPageGate.complete(Unit)
+        assertEquals(RefreshResult.Success, usPage.await())
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun refresh_invalidates_a_page_response_before_append() = runTest {
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(articleDto(1)),
+        )
+        repository.refreshArticles(NewsCountry.US)
+
+        val pageGate = CompletableDeferred<Unit>()
+        val refreshGate = CompletableDeferred<Unit>()
+        remoteDataSource.fetchHandler = { requestNumber ->
+            when (requestNumber) {
+                2 -> {
+                    pageGate.await()
+                    NewsApiResponseDto(
+                        status = "ok",
+                        totalResults = 40,
+                        articles = listOf(articleDto(2)),
+                    )
+                }
+                3 -> {
+                    refreshGate.await()
+                    NewsApiResponseDto(
+                        status = "ok",
+                        totalResults = 1,
+                        articles = listOf(articleDto(3)),
+                    )
+                }
+                else -> error("Unexpected request $requestNumber")
+            }
+        }
+
+        val page = async { repository.loadMoreArticles(NewsCountry.US) }
+        runCurrent()
+        val refresh = async { repository.refreshArticles(NewsCountry.US) }
+        runCurrent()
+
+        pageGate.complete(Unit)
+        runCurrent()
+        assertEquals(0, localDataSource.appendCallCount)
+        assertEquals(listOf("Article 1"), localDataSource.articles.value.map { it.title })
+
+        refreshGate.complete(Unit)
+        assertEquals(RefreshResult.Success, page.await())
+        assertEquals(RefreshResult.Success, refresh.await())
+        assertEquals(listOf("Article 3"), localDataSource.articles.value.map { it.title })
+    }
+
+    @Test
+    fun paging_state_is_isolated_per_country() = runTest {
+        // US has more
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = (1..20).map { articleDto(it) }
+        )
+        repository.refreshArticles(NewsCountry.US)
+
+        // ID has no more
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 10,
+            articles = (1..10).map { articleDto(it) }
+        )
+        repository.refreshArticles(NewsCountry.ID)
+
+        assertTrue(repository.canLoadMore(NewsCountry.US))
+        assertTrue(!repository.canLoadMore(NewsCountry.ID))
+    }
+
+    @Test
+    fun refresh_resets_paging_state() = runTest {
+        // Load more until hasMore is false
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 20,
+            articles = (1..20).map { articleDto(it) }
+        )
+        repository.refreshArticles(NewsCountry.US)
+        assertTrue(!repository.canLoadMore(NewsCountry.US))
+
+        // Refresh with new total results
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 100,
+            articles = (1..20).map { articleDto(it) }
+        )
+        repository.refreshArticles(NewsCountry.US)
+        assertTrue(repository.canLoadMore(NewsCountry.US))
+    }
+
+    private fun articleDto(index: Int, title: String = "Article $index"): NewsApiArticleDto {
+        return NewsApiArticleDto(
+            title = title,
+            url = "https://example.com/$index",
+            publishedAt = "2024-03-20T12:34:56Z"
+        )
+    }
+
     private fun cachedArticle(): ArticleEntity = ArticleEntity(
         "article-url:https://example.com/cached",
         "us",
@@ -459,11 +761,19 @@ class FakeRemoteArticleDataSource : RemoteArticleDataSource {
     var response: NewsApiResponseDto? = null
     var exception: Exception? = null
     var requestedCountry: String? = null
+    var requestedPage: Int? = null
+    var requestedPageSize: Int? = null
     var fetchCount: Int = 0
     var fetchHandler: (suspend (Int) -> NewsApiResponseDto)? = null
 
-    override suspend fun fetchTopHeadlines(country: NewsCountry): NewsApiResponseDto {
+    override suspend fun fetchTopHeadlines(
+        country: NewsCountry,
+        page: Int,
+        pageSize: Int,
+    ): NewsApiResponseDto {
         requestedCountry = country.code
+        requestedPage = page
+        requestedPageSize = pageSize
         fetchCount += 1
         fetchHandler?.let { return it(fetchCount) }
         exception?.let { throw it }
@@ -473,7 +783,9 @@ class FakeRemoteArticleDataSource : RemoteArticleDataSource {
 
 class FakeLocalArticleDataSource : LocalArticleDataSource {
     val articles = MutableStateFlow<List<ArticleEntity>>(emptyList())
+    var appendCallCount: Int = 0
     var replaceException: Exception? = null
+    var appendException: Exception? = null
     var observeException: Exception? = null
 
     override fun observeAll(country: NewsCountry): Flow<List<ArticleEntity>> {
@@ -490,5 +802,17 @@ class FakeLocalArticleDataSource : LocalArticleDataSource {
         replaceException?.let { throw it }
         val otherCountries = this.articles.value.filter { it.countryCode != country.code }
         this.articles.value = otherCountries + articles
+    }
+
+    override suspend fun appendArticles(articles: List<ArticleEntity>, country: NewsCountry) {
+        appendException?.let { throw it }
+        appendCallCount += 1
+        require(articles.all { it.countryCode == country.code })
+        val existingIds = this.articles.value
+            .filter { it.countryCode == country.code }
+            .map { it.id }
+            .toMutableSet()
+        val newArticles = articles.filter { existingIds.add(it.id) }
+        this.articles.value += newArticles
     }
 }

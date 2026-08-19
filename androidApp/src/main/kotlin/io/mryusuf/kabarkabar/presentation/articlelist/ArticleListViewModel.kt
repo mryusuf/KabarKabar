@@ -56,6 +56,9 @@ class ArticleListViewModel(
     private data class SyncState(
         val attemptId: Long? = null,
         val isRunning: Boolean = false,
+        val isPaging: Boolean = false,
+        val isPagingError: Boolean = false,
+        val pagingAttemptId: Long? = null,
         val initialSyncCompleted: Boolean = false,
         val lastError: SyncError? = null,
         val pendingFailure: PendingRefreshFailure? = null,
@@ -66,8 +69,10 @@ class ArticleListViewModel(
     private val syncState = MutableStateFlow(SyncState())
     private val eventsChannel = Channel<ArticleListUiEvent>(capacity = Channel.BUFFERED)
     private var nextAttemptId = 0L
+    private var nextPagingAttemptId = 0L
     private var countryGeneration = 0L
     private var refreshJob: Job? = null
+    private var pagingJob: Job? = null
 
     /** One-shot effects are buffered until a collector receives them and never replayed. */
     val events = eventsChannel.receiveAsFlow()
@@ -105,11 +110,17 @@ class ArticleListViewModel(
         val currentState = syncState.value
         if (currentState.isRunning) return
 
+        pagingJob?.cancel()
+        pagingJob = null
+
         val attemptId = ++nextAttemptId
         val generation = countryGeneration
         syncState.value = currentState.copy(
             attemptId = attemptId,
             isRunning = true,
+            isPaging = false,
+            isPagingError = false,
+            pagingAttemptId = null,
             lastError = null,
             pendingFailure = null,
         )
@@ -140,9 +151,75 @@ class ArticleListViewModel(
         }
     }
 
+    /** Triggers loading the next page of articles for the current country. */
+    fun loadMore() {
+        val country = selectedCountry.value
+        val currentState = syncState.value
+        if (currentState.isRunning || currentState.isPaging) return
+        if (observedArticles.value.lastData?.isNotEmpty() != true) return
+        if (!repository.canLoadMore(country)) return
+
+        val pagingAttemptId = ++nextPagingAttemptId
+        val generation = countryGeneration
+        syncState.update {
+            it.copy(
+                isPaging = true,
+                isPagingError = false,
+                pagingAttemptId = pagingAttemptId,
+            )
+        }
+
+        pagingJob = viewModelScope.launch {
+            try {
+                val result = try {
+                    repository.loadMoreArticles(country)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    RefreshResult.Failure(SyncError.Unknown)
+                }
+
+                syncState.update { state ->
+                    if (
+                        state.pagingAttemptId == pagingAttemptId &&
+                        generation == countryGeneration &&
+                        selectedCountry.value == country
+                    ) {
+                        state.copy(
+                            isPaging = false,
+                            isPagingError = result is RefreshResult.Failure,
+                            pagingAttemptId = null,
+                        )
+                    } else {
+                        state
+                    }
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                syncState.update { state ->
+                    if (
+                        state.pagingAttemptId == pagingAttemptId &&
+                        generation == countryGeneration &&
+                        selectedCountry.value == country
+                    ) {
+                        state.copy(
+                            isPaging = false,
+                            isPagingError = true,
+                            pagingAttemptId = null,
+                        )
+                    } else {
+                        state
+                    }
+                }
+            }
+        }
+    }
+
     fun onCountrySelected(country: NewsCountry) {
         if (selectedCountry.value == country) return
         refreshJob?.cancel()
+        pagingJob?.cancel()
+        pagingJob = null
         countryGeneration += 1
         observedArticles.value = ObservedArticles()
         syncState.value = SyncState()
@@ -258,6 +335,9 @@ class ArticleListViewModel(
         return ArticleListUiState(
             content = content,
             isRefreshing = sync.isRunning && content is ArticleListContent.Data,
+            isPaging = sync.isPaging,
+            hasMore = repository.canLoadMore(country),
+            isPagingError = sync.isPagingError,
             selectedCountry = country,
         )
     }
