@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phases 0–6 and Phase 7A are complete locally. The candidate still requires commit/push and one final anonymous clone check. Phase 7B and later bonus work have not started.
+> Status: Phases 0–6, 7A, and 7B are complete locally. The candidate still requires commit/push and one final anonymous clone check.
 
 ## Goal
 
@@ -26,6 +26,7 @@ Demonstrate:
 - [x] Cached content remains visible after refresh failure
 - [x] Non-blocking refresh error when cache exists
 - [x] Clear error state when neither remote nor local data is usable
+- [x] Full-screen image viewer
 - [x] System back + app-bar back navigation
 - [x] Required unit tests
 - [x] Required Compose UI tests
@@ -36,6 +37,7 @@ Demonstrate:
 - [x] Prominent first article without `Featured` semantics
 - [x] Compact later rows with stable article-ID keys
 - [x] Optional image/description-safe List and Detail layouts
+- [x] Prominent hero fallback while an image is loading, unavailable, or missing
 - [x] Loading, Empty, blocking Error, and cached refresh-failure presentation
 - [x] Accessibility baseline and larger-font smoke check
 - [x] Clean Android/shared test and Pixel_9 runtime gate
@@ -190,10 +192,11 @@ test and manual runtime commands.
 ```
 
 The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 10
-`ArticleListViewModelTest` cases, 2 `ArticleDetailViewModelTest` cases, and 1
-navigation boundary test (18 total). The instrumented task runs 2 Compose UI
-acceptance tests (T4 and T5). The shared logic suite currently runs 36 tests
-on Android and 37 on iOS.
+`ArticleListViewModelTest` cases, 2 `ArticleDetailViewModelTest` cases, 2
+`ThemeTest` cases, and 2 navigation boundary tests (21 total). The
+instrumented task runs 13 Compose UI tests, including T4, T5, Phase 7A state
+checks, and the Phase 7B viewer matrix. The shared logic suite currently runs
+36 tests on Android and 37 on iOS.
 
 To manually verify the current Android application on a connected device:
 
@@ -254,6 +257,7 @@ review/remediation is kept separate from Agent Mode evidence.
 | 4 | Phase 4A ViewModel state orchestration and presentation tests | See `plan/ai-usage-log.md` Entry 4 | Agent Mode corrected the initial empty-vs-failed-sync state distinction; the later independent Codex review/remediation is not Agent Mode evidence | `:androidApp:testDebugUnitTest`: 15 cases after remediation |
 | 5 | Phase 4B Compose screens, navigation, pull-to-refresh, and Coil image loading | See `plan/ai-usage-log.md` Entry 5 | Gemini-assisted image debugging recorded the missing Coil 3 network integration and singleton ImageLoader correction; independent review fixes remain separate | Debug assemble plus Pixel 9 exploratory runtime checks |
 | 6 | Phase 5 Compose UI acceptance tests (T4 & T5) | See `plan/ai-usage-log.md` Entry 6 | Agent Mode corrections and the subsequent Codex review are explicitly separated; Codex seeded cache before activity launch, recorded the configured refresh failure, and added distinguishable T4 identity fixtures | T4 individually, T5 individually, and together: 2 PASSED on Pixel_9 |
+| 7 | Phase 7B Full-Screen Image Viewer | See `plan/ai-usage-log.md` Entry 7 | Agent implementation was independently reviewed; URL double-decoding and unusable-image exposure were corrected, with navigation/back-stack and failure regressions added | Full clean/shared gate plus 13 Pixel_9 connected tests |
 
 At least one final entry must describe a real AI-generated mistake/suboptimal approach and how it was corrected.
 
@@ -278,10 +282,10 @@ Do not start bonuses until core behavior and tests are green.
 Potential bonuses:
 
 - [x] system dark mode (Phase 7A),
+- [x] full-screen image viewer (Phase 7B),
 - [ ] commonTest coverage,
 - [ ] shared iOS target / iOS app if practical,
 - [ ] pagination,
-- [ ] full-screen image viewer,
 - [ ] full accessibility audit beyond the Phase 7A baseline.
 
 ## Known Limitations
@@ -293,7 +297,6 @@ Potential bonuses:
 ## Future Work / Bonuses
 - **Country Selector**: Allow users to change the news country from within the app.
 - **Pagination**: Implement "Load More" for the article list.
-- **Full-Screen Image Viewer**: Add a dedicated viewer for available article images.
 - **Accessibility**: Conduct a full WCAG audit and improve screen reader support beyond the Phase 7A baseline.
 - **iOS Application**: Build a native SwiftUI application using the shared logic.
 

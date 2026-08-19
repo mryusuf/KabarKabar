@@ -19,5 +19,7 @@
 
     <string name="retry">Retry</string>
     <string name="back">Back</string>
+    <string name="close">Close</string>
     <string name="article_image_content_description">Article image</string>
+    <string name="article_image_unavailable_content_description">Article image unavailable</string>
 </resources>

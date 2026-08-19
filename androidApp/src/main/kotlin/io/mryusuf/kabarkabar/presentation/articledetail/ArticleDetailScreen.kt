@@ -1,5 +1,7 @@
 package io.mryusuf.kabarkabar.presentation.articledetail
 
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +44,7 @@ import org.koin.core.parameter.parametersOf
 fun ArticleDetailScreen(
     articleId: ArticleId,
     onBack: () -> Unit,
+    onImageClick: (String) -> Unit,
     viewModel: ArticleDetailViewModel = koinViewModel(
         parameters = { parametersOf(articleId) }
     )
@@ -93,18 +96,19 @@ fun ArticleDetailScreen(
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        state.article.imageUrl?.let { imageUrl ->
-                            AsyncImage(
-                                model = imageUrl,
-                                contentDescription = stringResource(
-                                    R.string.article_image_content_description
-                                ),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(16f / 10f),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
+                        usableImageUrl(state.article.imageUrl)?.let { imageUrl ->
+                                AsyncImage(
+                                    model = imageUrl,
+                                    contentDescription = stringResource(
+                                        R.string.article_image_content_description
+                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(16f / 10f)
+                                        .clickable { onImageClick(imageUrl) },
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
                         Column(modifier = Modifier.padding(20.dp)) {
                             Text(
                                 text = formattedDate,
@@ -176,4 +180,11 @@ private fun detailErrorMessageRes(error: ArticleDetailUiError): Int = when (erro
     ArticleDetailUiError.PersistenceUnavailable -> R.string.error_persistence
     ArticleDetailUiError.MalformedData -> R.string.error_malformed
     ArticleDetailUiError.Unknown -> R.string.error_unknown
+}
+
+private fun usableImageUrl(rawImageUrl: String?): String? {
+    val imageUrl = rawImageUrl?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    val uri = Uri.parse(imageUrl)
+    val hasHttpScheme = uri.scheme == "http" || uri.scheme == "https"
+    return imageUrl.takeIf { hasHttpScheme && !uri.host.isNullOrBlank() }
 }

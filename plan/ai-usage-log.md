@@ -216,9 +216,47 @@ N/A (Phase 5 Complete)
 
 ---
 
+## Entry 7
+
+**Task/category:**
+Phase 7B: Full-Screen Image Viewer
+
+**Prompt / context given to Agent Mode:**
+Implement a full-screen image viewer that can be opened from the article detail screen hero image. Use standard Compose Navigation, dark background, fit content scale, and a close button. Support system back button. Reuse existing Coil for image loading. Pass image URL via navigation.
+
+**What the agent produced:**
+Created `ImageViewerScreen.kt`, updated `NavRoutes`, `KabarKabarNavGraph.kt`, `ArticleDetailScreen.kt`, `strings.xml`, and `ArticleTestData.kt`. Added `ImageViewerTest.kt`.
+
+**My review:**
+The agent implemented the new screen and integrated it into the navigation graph. It added URL encoding/decoding for the navigation argument, but the independent Codex review below later found that the destination decoded the already-decoded argument a second time. The hero image in the detail screen was made clickable, and the image viewer provided the required full-screen experience with a dark background and a close affordance.
+
+**What I changed or rejected, and why:**
+1. **Wrong File Path**: I initially attempted to update `strings.xml` using an incorrect path (`androidApp/src/res/values/strings.xml` instead of `androidApp/src/main/res/values/strings.xml`). The tool correctly reported the error, and I fixed the path immediately.
+2. **Test Data Limitation**: I noticed that the existing `ArticleTestData` only contained articles with `null` image URLs, which would make testing the image viewer impossible. I added a new `articleWithImage` fixture to `ArticleTestData` and updated `ImageViewerTest` to use it, ensuring both the "has image" and "no image" cases are covered.
+
+**Validation performed:**
+At the Agent Mode checkpoint, the full gate specified in the phase requirements
+was executed: `./gradlew clean :sharedLogic:allTests :sharedLogic:assemble :sharedLogic:check :androidApp:testDebugUnitTest :androidApp:assembleDebug :androidApp:lintDebug :androidApp:connectedDebugAndroidTest`. All tests passed (7 instrumented tests total, including 2 new tests for the image viewer). Manual verification on the emulator confirmed smooth navigation from Detail to Viewer and back via both the close button and the system back button.
+
+**Subsequent Codex 7B adversarial remediation (not Agent Mode evidence):**
+The review added a regression for URL values containing `+` and percent escapes,
+then removed the second decode at the Navigation boundary. It also rejected
+blank/whitespace-only and malformed image URLs before exposing the hero action, added
+single-top viewer navigation, replaced the fixed close-button offset with
+status-bar insets, removed an unused viewer string, and strengthened the
+instrumentation matrix for exact one-layer close, preserved Detail/List routes,
+refresh-count stability, and failed-image safety.
+
+The revalidation gate passed with 36 Android shared tests, 37 iOS simulator
+shared tests, 21 Android application unit tests, and 12 Pixel_9 connected tests;
+`git diff --check` passed. This independent Codex work is not attributed to
+Android Studio Agent Mode.
+
+---
+
 ## Evidence status
 
-Entries 1–6 are recorded above. Entry 2 is a meaningful Android Studio Agent
+Entries 1–7 are recorded above. Entry 2 is a meaningful Android Studio Agent
 Mode data-layer task and includes the documented empty-vs-malformed mapper
 correction, dependency correction, and Room constructor correction. Entry 3 is
 the reported meaningful Android Studio Agent Mode acceptance-test task; Codex
@@ -226,6 +264,8 @@ review/remediation work is not counted as Agent Mode evidence.
 Entry 6 is the reported meaningful Android Studio Agent Mode Compose UI
 acceptance-test task; the later T4/T5 boundary corrections are Codex review
 work and are not attributed to Agent Mode.
+Entry 7 records the viewer implementation task; the subsequent viewer audit and
+remediation above are not attributed to Agent Mode.
 
 The mapper correction is supported by the Phase 2 artifact available at the
 start of this Codex review: the earlier indexed mapper returned a plain article

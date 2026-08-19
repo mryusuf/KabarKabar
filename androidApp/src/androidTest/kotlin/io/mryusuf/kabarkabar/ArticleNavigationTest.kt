@@ -90,6 +90,15 @@ class ArticleNavigationTest : KoinTest {
         composeTestRule.onNodeWithText("KabarKabar").assertIsDisplayed()
         composeTestRule.onNodeWithText(selectedArticle.title).assertIsDisplayed()
     }
+
+    @Test
+    fun prominent_first_article_shows_a_fallback_when_image_is_unavailable() {
+        composeTestRule.onNodeWithText(ArticleTestData.article1.title).assertIsDisplayed()
+
+        composeTestRule
+            .onNodeWithContentDescription("Article image unavailable")
+            .assertIsDisplayed()
+    }
 }
 
 class KoinModuleRule(private val module: Module) : TestRule {

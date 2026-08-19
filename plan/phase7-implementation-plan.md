@@ -4,7 +4,7 @@
 
 - Baseline: `release-v1.0.0`
 - Baseline meaning: audited Phase 0–6 submission-safe release.
-- Phase 7: 7A complete locally; 7B and later remain NOT STARTED.
+- Phase 7: 7A and 7B complete locally; 7C and later remain NOT STARTED.
 - Final target: consider `release-v1.1.0` only after whole-Phase-7 audit and clean-clone verification.
 - Phase 8 modularization: deferred until after submission.
 
@@ -47,21 +47,50 @@ The requested clean gate passed with zero failures:
 Pixel_9 runtime checks covered light/dark List and Detail, first/later navigation,
 pull-to-refresh, cached offline refresh failure, blocking no-cache error, and a
 larger-font smoke check. Loading, Empty, and blocking Error were also exercised
-through deterministic real-`MainActivity` instrumentation tests. Phase 7B and
-all later bonus work remain untouched.
+through deterministic real-`MainActivity` instrumentation tests. At this Phase
+7A checkpoint, Phase 7B and all later bonus work remained untouched.
+
+## Phase 7A image follow-up — 19 August 2026
+
+Runtime review found that the prominent first row could reserve hero space while
+its remote image was loading or unavailable, leaving a visually empty surface.
+`ProminentArticleRow` now trims image input, renders a themed local fallback for
+missing/blank URLs, and supplies that fallback during Coil loading/failure. The
+deterministic `ArticleNavigationTest` regression covers the missing-image first
+item. The 7B viewer, singleton `ImageLoader`, navigation, and shared data layer
+remain unchanged.
 
 # Phase 7B — Full-Screen Image Viewer
 
-- [ ] tappable hero only with image
-- [ ] full-screen viewer
-- [ ] close affordance
-- [ ] system back
-- [ ] no extra data fetch
-- [ ] missing-image safe
+- [x] tappable hero only with a usable image URL
+- [x] full-screen viewer
+- [x] close affordance
+- [x] system back
+- [x] no extra article/data-layer fetch
+- [x] missing/blank-image safe
 - [ ] optional zoom only if low risk
-- [ ] regression tests
-- [ ] runtime QA
-- [ ] Codex 7B gate: `SAFE TO START PHASE 7C: YES`
+- [x] regression tests
+- [x] runtime QA
+- [x] Codex 7B gate: `SAFE TO START PHASE 7C: YES`
+
+## Phase 7B Codex adversarial review — 19 August 2026
+
+The initial candidate double-decoded Navigation's already-decoded image URL
+argument, which corrupted literal `+` and percent-encoded URL components. It
+also treated whitespace-only image URLs as usable. The candidate was tightened
+without changing `sharedLogic`, Room, API behavior, or Article identity:
+
+- Navigation now preserves the single decoded URL boundary and uses
+  `launchSingleTop` for repeated viewer opens.
+- Detail trims and rejects blank image URLs before exposing the viewer action.
+- The close control uses status-bar insets rather than a fixed top offset.
+- Focused tests cover encoded URL preservation, close/system-back stack depth,
+  no/blank/malformed/failed images, refresh-count stability, and post-close
+  restoration.
+
+The full clean Android/shared gate passed with 36 Android shared tests, 37 iOS
+simulator shared tests, 21 Android application unit tests, and 13 Pixel_9
+connected tests. `git diff --check` passed. Phase 7C and later remain untouched.
 
 # Phase 7C — Country Selection & Offline Correctness
 

@@ -9,6 +9,19 @@ import kotlin.test.assertEquals
 class NavRoutesTest {
 
     @Test
+    fun image_url_with_encoded_components_is_not_decoded_twice() {
+        val imageUrl = "https://example.com/hero.jpg?part=one%2Ftwo&token=a+b"
+        val route = NavRoutes.imageViewer(imageUrl)
+        val encodedArgument = route.substringAfter("image_viewer/")
+        val navigationDecodedArgument = URLDecoder.decode(
+            encodedArgument,
+            StandardCharsets.UTF_8.toString(),
+        )
+
+        assertEquals(imageUrl, NavRoutes.imageUrlFromArgument(navigationDecodedArgument))
+    }
+
+    @Test
     fun stable_id_with_percent_encoding_survives_navigation_decode() {
         val articleId = ArticleId.fromCanonicalUrl("https://example.com/story%2Fpart")
         val route = NavRoutes.articleDetail(articleId)

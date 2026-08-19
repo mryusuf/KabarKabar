@@ -230,7 +230,7 @@ Priority order:
 3. [ ] iOS shared target or minimal iOS proof if low-risk
 4. [x] accessibility baseline (Phase 7A); full audit remains future work
 5. [ ] pagination
-6. [ ] full-screen image viewer
+6. [x] full-screen image viewer (Phase 7B)
 
 Do not add bonus modularization unless it solves a real problem.
 
@@ -239,8 +239,25 @@ passed the requested clean gate and Pixel_9 connected suite after correcting
 system-bar icon polarity, optional-image layout reservation, and state-copy
 readability. Regression coverage now exercises the first-item/detail missing-image
 path and real `MainActivity` Loading, Empty, and blocking Error states. No
-`sharedLogic` or Phase 0–6 data/domain contract changes were required. Phase 7B
-and later bonuses remain unstarted.
+`sharedLogic` or Phase 0–6 data/domain contract changes were required.
+
+**Phase 7A image follow-up (19 August 2026):** Runtime review found that the
+prominent first row could reserve hero space while a remote image was loading or
+unavailable, leaving a visually empty surface. `ProminentArticleRow` now trims
+image input, renders a themed local fallback for missing/blank URLs, and supplies
+the same fallback during Coil loading/failure. A deterministic Pixel_9 regression
+test covers the missing-image first-item path; the 7B viewer and shared data layer
+remain unchanged.
+
+**Phase 7B implementation and adversarial remediation (19 August 2026):**
+Implemented the full-screen image viewer with dark backdrop and close
+affordance. The review corrected double-decoding of Navigation's image URL
+argument, rejected blank/malformed image URLs before exposing the viewer, made
+repeated viewer opens single-top, and made close placement inset-aware. The
+clean gate passed with 36 Android shared tests, 37 iOS simulator shared tests,
+21 Android application unit tests, and 13 Pixel_9 connected tests. `git diff --check` also
+passed. Detail -> Viewer -> Detail, system back, list back-stack preservation,
+missing/failed image safety, and no article refresh on viewer open were covered.
 
 ## Suggested Calendar
 
