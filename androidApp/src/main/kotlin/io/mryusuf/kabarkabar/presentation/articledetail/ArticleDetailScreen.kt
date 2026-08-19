@@ -22,11 +22,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import io.mryusuf.kabarkabar.R
@@ -68,41 +70,58 @@ fun ArticleDetailScreen(
         ) {
             when (val state = uiState) {
                 ArticleDetailUiState.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator(strokeWidth = 3.dp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.loading_article),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
 
                 is ArticleDetailUiState.Data -> {
+                    val formattedDate = remember(state.article.publishedAt) {
+                        DateFormatter.format(state.article.publishedAt)
+                    }
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        AsyncImage(
-                            model = state.article.imageUrl,
-                            contentDescription = state.article.imageUrl?.let {
-                                stringResource(R.string.article_image_content_description)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(16f / 9f),
-                            contentScale = ContentScale.Crop
-                        )
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        state.article.imageUrl?.let { imageUrl ->
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = stringResource(
+                                    R.string.article_image_content_description
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(16f / 10f),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Text(
+                                text = formattedDate,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = state.article.title,
                                 style = MaterialTheme.typography.headlineMedium
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = DateFormatter.format(state.article.publishedAt),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
                             state.article.description?.let { description ->
                                 Text(
                                     text = description,
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    lineHeight = 28.sp
                                 )
                             }
                         }
@@ -110,18 +129,41 @@ fun ArticleDetailScreen(
                 }
 
                 ArticleDetailUiState.NotFound -> {
-                    Text(
-                        text = stringResource(R.string.article_not_found),
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = stringResource(R.string.article_not_found_title),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.article_not_found),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
                 }
 
                 is ArticleDetailUiState.Error -> {
-                    Text(
-                        text = stringResource(detailErrorMessageRes(state.error)),
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = stringResource(R.string.error_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(detailErrorMessageRes(state.error)),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
                 }
             }
         }

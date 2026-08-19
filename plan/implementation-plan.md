@@ -226,13 +226,21 @@ public-clone verification.
 Priority order:
 
 1. [ ] `commonTest` coverage / shared-target confidence
-2. [ ] dark mode polish
+2. [x] dark mode polish (Phase 7A system-theme review)
 3. [ ] iOS shared target or minimal iOS proof if low-risk
-4. [ ] accessibility polish
+4. [x] accessibility baseline (Phase 7A); full audit remains future work
 5. [ ] pagination
 6. [ ] full-screen image viewer
 
 Do not add bonus modularization unless it solves a real problem.
+
+**Phase 7A Codex review (19 August 2026):** The Android presentation candidate
+passed the requested clean gate and Pixel_9 connected suite after correcting
+system-bar icon polarity, optional-image layout reservation, and state-copy
+readability. Regression coverage now exercises the first-item/detail missing-image
+path and real `MainActivity` Loading, Empty, and blocking Error states. No
+`sharedLogic` or Phase 0–6 data/domain contract changes were required. Phase 7B
+and later bonuses remain unstarted.
 
 ## Suggested Calendar
 

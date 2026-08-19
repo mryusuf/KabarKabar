@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phases 0–6 are complete locally. The verified candidate still requires commit/push and one final anonymous clone check. Phase 7 bonus work has not started.
+> Status: Phases 0–6 and Phase 7A are complete locally. The candidate still requires commit/push and one final anonymous clone check. Phase 7B and later bonus work have not started.
 
 ## Goal
 
@@ -29,6 +29,21 @@ Demonstrate:
 - [x] System back + app-bar back navigation
 - [x] Required unit tests
 - [x] Required Compose UI tests
+
+## Phase 7A Review Status
+
+- [x] System-driven light/dark theme and system-bar contrast
+- [x] Prominent first article without `Featured` semantics
+- [x] Compact later rows with stable article-ID keys
+- [x] Optional image/description-safe List and Detail layouts
+- [x] Loading, Empty, blocking Error, and cached refresh-failure presentation
+- [x] Accessibility baseline and larger-font smoke check
+- [x] Clean Android/shared test and Pixel_9 runtime gate
+
+The Codex 7A review made presentation-only changes. `sharedLogic` data/domain
+contracts remain unchanged, and the immutable `release-v1.0.0` tag is retained as
+the fallback. No new Android Studio Agent Mode task was performed for this review;
+the existing AI usage log remains the source of prior Agent Mode evidence.
 
 ## Tech Stack
 
@@ -262,12 +277,12 @@ Do not start bonuses until core behavior and tests are green.
 
 Potential bonuses:
 
-- dark mode,
-- commonTest coverage,
-- shared iOS target / iOS app if practical,
-- pagination,
-- full-screen image viewer,
-- accessibility polish.
+- [x] system dark mode (Phase 7A),
+- [ ] commonTest coverage,
+- [ ] shared iOS target / iOS app if practical,
+- [ ] pagination,
+- [ ] full-screen image viewer,
+- [ ] full accessibility audit beyond the Phase 7A baseline.
 
 ## Known Limitations
 
@@ -278,8 +293,8 @@ Potential bonuses:
 ## Future Work / Bonuses
 - **Country Selector**: Allow users to change the news country from within the app.
 - **Pagination**: Implement "Load More" for the article list.
-- **Dark Mode**: Complete the Material 3 dark theme support.
-- **Accessibility**: Conduct a full WCAG audit and improve screen reader support.
+- **Full-Screen Image Viewer**: Add a dedicated viewer for available article images.
+- **Accessibility**: Conduct a full WCAG audit and improve screen reader support beyond the Phase 7A baseline.
 - **iOS Application**: Build a native SwiftUI application using the shared logic.
 
 ## Submission Checklist

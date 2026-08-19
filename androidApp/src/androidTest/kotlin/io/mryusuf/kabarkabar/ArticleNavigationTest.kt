@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.mryusuf.kabarkabar.domain.model.ArticleId
@@ -23,6 +24,7 @@ import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 import org.koin.test.KoinTest
+import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class ArticleNavigationTest : KoinTest {
@@ -51,12 +53,32 @@ class ArticleNavigationTest : KoinTest {
         // travels through ArticleListScreen using the stable ArticleId.
         composeTestRule.onNodeWithText(ArticleTestData.article1.title).assertIsDisplayed()
         composeTestRule.onNodeWithText(selectedArticle.title).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Featured").assertDoesNotExist()
+
+        val rootBounds = composeTestRule.onRoot().fetchSemanticsNode().boundsInRoot
+        val firstTitleBounds = composeTestRule
+            .onNodeWithText(ArticleTestData.article1.title)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertTrue(
+            firstTitleBounds.top < rootBounds.height * 0.35f,
+            "A missing first image must not leave a giant blank hero area",
+        )
+
         composeTestRule.onNodeWithText(selectedArticle.title).performClick()
 
         // Detail must resolve the article selected from the list, not merely
         // show any detail destination.
         composeTestRule.onNodeWithText("Article Detail").assertIsDisplayed()
         composeTestRule.onNodeWithText(selectedArticle.title).assertIsDisplayed()
+        val detailTitleBounds = composeTestRule
+            .onNodeWithText(selectedArticle.title)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertTrue(
+            detailTitleBounds.top < rootBounds.height * 0.35f,
+            "A missing detail image must not leave a giant blank hero area",
+        )
         selectedArticle.description?.let {
             composeTestRule.onNodeWithText(it).assertIsDisplayed()
         }

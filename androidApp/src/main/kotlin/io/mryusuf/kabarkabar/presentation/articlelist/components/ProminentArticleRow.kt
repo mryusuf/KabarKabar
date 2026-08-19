@@ -2,13 +2,11 @@ package io.mryusuf.kabarkabar.presentation.articlelist.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,7 +22,7 @@ import io.mryusuf.kabarkabar.domain.model.Article
 import io.mryusuf.kabarkabar.presentation.util.DateFormatter
 
 @Composable
-fun ArticleRow(
+fun ProminentArticleRow(
     article: Article,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -33,43 +31,43 @@ fun ArticleRow(
         DateFormatter.format(article.publishedAt)
     }
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(16.dp)
     ) {
         article.imageUrl?.let { imageUrl ->
             AsyncImage(
                 model = imageUrl,
                 contentDescription = stringResource(R.string.article_image_content_description),
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f),
                 contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
         }
-        Column(modifier = Modifier.weight(1f)) {
+        Text(
+            text = article.title,
+            style = MaterialTheme.typography.titleLarge,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis
+        )
+        article.description?.let { description ->
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = article.title,
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 2,
+                text = description,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
-            article.description?.let { description ->
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = formattedDate,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline
-            )
         }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = formattedDate,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
     }
 }

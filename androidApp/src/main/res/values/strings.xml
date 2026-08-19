@@ -3,9 +3,13 @@
     <string name="article_list_title">KabarKabar</string>
     <string name="article_detail_title">Article Detail</string>
     <string name="article_not_found">Article not found.</string>
+    <string name="article_not_found_title">Article not found</string>
 
     <string name="loading_articles">Loading articles…</string>
+    <string name="loading_article">Loading article…</string>
     <string name="empty_articles">No articles found.</string>
+    <string name="empty_articles_title">No headlines found</string>
+    <string name="error_title">Something went wrong</string>
     <string name="error_loading_articles">Failed to load articles.</string>
     <string name="error_network">Network unavailable. Check your connection.</string>
     <string name="error_remote">News server is currently unavailable.</string>

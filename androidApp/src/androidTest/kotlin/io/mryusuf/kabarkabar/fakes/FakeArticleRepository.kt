@@ -6,6 +6,7 @@ import io.mryusuf.kabarkabar.domain.model.ArticleId
 import io.mryusuf.kabarkabar.domain.model.ArticleObservation
 import io.mryusuf.kabarkabar.domain.model.RefreshResult
 import io.mryusuf.kabarkabar.domain.repository.ArticleRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.map
 class FakeArticleRepository(
     initialArticles: List<Article> = emptyList(),
     initialRefreshResult: RefreshResult = RefreshResult.Success,
+    private val refreshGate: CompletableDeferred<Unit>? = null,
 ) : ArticleRepository {
     private val _articles = MutableStateFlow<ArticleObservation<List<Article>>>(
         ArticleObservation.Data(initialArticles)
@@ -37,6 +39,7 @@ class FakeArticleRepository(
 
     override suspend fun refreshArticles(): RefreshResult {
         refreshCallCount += 1
+        refreshGate?.await()
         return refreshResult
     }
 

@@ -2,10 +2,12 @@ package io.mryusuf.kabarkabar.presentation.articlelist
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.mryusuf.kabarkabar.R
 import io.mryusuf.kabarkabar.domain.model.ArticleId
 import io.mryusuf.kabarkabar.presentation.articlelist.components.ArticleRow
+import io.mryusuf.kabarkabar.presentation.articlelist.components.ProminentArticleRow
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,7 +64,12 @@ fun ArticleListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.article_list_title)) })
+            TopAppBar(title = {
+                Text(
+                    text = stringResource(R.string.article_list_title),
+                    style = MaterialTheme.typography.titleLarge
+                )
+            })
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -76,10 +84,11 @@ fun ArticleListScreen(
                 ArticleListContent.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
+                            CircularProgressIndicator(strokeWidth = 3.dp)
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = stringResource(R.string.loading_articles),
-                                modifier = Modifier.padding(top = 8.dp),
+                                style = MaterialTheme.typography.bodyMedium
                             )
                         }
                     }
@@ -87,39 +96,67 @@ fun ArticleListScreen(
 
                 ArticleListContent.Empty -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = stringResource(R.string.empty_articles),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = stringResource(R.string.empty_articles_title),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.empty_articles),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
                     }
                 }
 
                 is ArticleListContent.Data -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(
+                        itemsIndexed(
                             items = content.articles,
-                            key = { it.id.value }
-                        ) { article ->
-                            ArticleRow(
-                                article = article,
-                                onClick = { onArticleClick(article.id) }
-                            )
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                thickness = 0.5.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant
-                            )
+                            key = { _, article -> article.id.value }
+                        ) { index, article ->
+                            if (index == 0) {
+                                ProminentArticleRow(
+                                    article = article,
+                                    onClick = { onArticleClick(article.id) }
+                                )
+                            } else {
+                                ArticleRow(
+                                    article = article,
+                                    onClick = { onArticleClick(article.id) }
+                                )
+                            }
+                            if (index < content.articles.size - 1) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant
+                                )
+                            }
                         }
                     }
                 }
 
                 is ArticleListContent.Error -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = stringResource(R.string.error_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = stringResource(articleListErrorMessageRes(content.error)),
-                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
                             TextButton(onClick = viewModel::refresh) {
                                 Text(stringResource(R.string.retry))
                             }
