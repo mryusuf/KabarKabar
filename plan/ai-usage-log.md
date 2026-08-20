@@ -333,9 +333,68 @@ not add a new Agent Mode task.
 
 ---
 
+---
+
+## Entry 10
+
+**Task/category:**
+Phase 7E: Native SwiftUI iOS Application
+
+**Prompt / context given to Agent Mode:**
+Implement a native SwiftUI iOS application that reuses the KMP shared logic. Refactor the existing Koin DI to move shared components from `androidApp` to `sharedLogic/commonMain`. Implement a `FlowWrapper` in `sharedLogic/iosMain` to facilitate Flow consumption in Swift. Create native SwiftUI ViewModels and Views in `iosApp` that mirror the Android functionality (List with refresh/pagination, and Detail). Ensure the iOS app follows native design principles and supports light/dark mode.
+
+**What the agent produced:**
+- `SharedModule.kt`: Moved repository, database, and networking DI to `commonMain`.
+- `FlowWrapper.kt` & `KoinIOS.kt`: Added Swift ergonomics to `iosMain`.
+- Updated `androidApp` DI to use `sharedModule`.
+- `Koin.swift`, `ArticleListViewModel.swift`, `ArticleDetailViewModel.swift`, `ArticleListView.swift`, `ArticleDetailView.swift`, and `iOSApp.swift` in `iosApp`.
+- Updated `README.md` with iOS instructions.
+
+**Checkpoint review (not accepted as final evidence):**
+The checkpoint described a reusable shared module and a Swift bridge, but its
+conclusions were not accepted without compilation and lifecycle verification.
+The candidate still had a real compile error (`SyncError` has no `message`),
+referenced fields absent from the shared `Article` model, ignored
+`RefreshResult.Failure`, hard-coded US detail navigation, and retained the
+Swift observation callback strongly enough to risk a ViewModel/collector
+cycle. These are concrete defects in the generated candidate, not invented
+examples.
+
+**What I changed or rejected, and why:**
+1. **Unused Imports in Android DI**: After moving components to `sharedModule`, I initially left several unused imports in `androidApp/AppModule.kt`. I cleaned these up after the agent pointed them out via warnings.
+2. **Swift Generic Loss**: I noticed that `ArticleObservation<T>` might lose its generic type when bridged to Swift through `FlowWrapper`. I used explicit casting in Swift (`observation as? ArticleObservationData<NSArray>`) to ensure type safety.
+3. **AsyncImage Placeholder**: The initial SwiftUI detail view didn't have a placeholder for images. I added a simple colored rectangle to improve the UI while images are loading.
+
+**Validation reported at the checkpoint:**
+The entry originally reported shared tests, Android tests, a simulator framework
+link, and manual iOS flows. Those claims are retained as historical Agent Mode
+output only; the later Codex audit did not treat them as verified evidence.
+
+## Codex 7E adversarial remediation
+
+The follow-up review corrected the Swift state mapping and model-field errors,
+made refresh results and cache-preserving failures explicit, passed the shared
+repository and country to detail, added weak callbacks and cancellable scope
+ownership, removed the unnecessary Koin framework export, moved Android DI to an
+Android-only bridge, added ignored iOS xcconfig setup, and added a deterministic
+iOS launch UI-test target/scheme. The iOS test target is intentionally small;
+shared KMP and Android tests remain the deeper behavior matrix.
+
+Independent final local evidence:
+
+- clean shared/Android gate: 56 Android shared tests, 58 iOS shared tests, 34 Android unit tests, lint/check/assemble green;
+- Pixel_9 connected suite: 17/17 passed;
+- Apple framework links: simulator and device debug frameworks passed;
+- Xcode `iosApp` build passed;
+- Xcode `iosAppTests` on iPhone 17 Pro Max iOS Simulator: 1/1 passed;
+- Computer Use Simulator QA observed list/prominent row, detail/back, viewer,
+  US/ID switching and cache isolation, cached refresh failure, light/dark,
+  and Dynamic Type. Pull-to-refresh is implemented through SwiftUI
+  `.refreshable`; the visual gesture was not used as deterministic test evidence.
+
 ## Evidence status
 
-Entries 1–9 are recorded above. Entry 2, Entry 3, Entry 6, Entry 8, and Entry 9 are
+Entries 1–10 are recorded above. Entry 2, Entry 3, Entry 6, Entry 8, Entry 9, and Entry 10 are
 meaningful Android Studio Agent Mode tasks. Entry 9 is an historical checkpoint;
 the subsequent Codex review and remediation are documented separately and are
 not presented as Agent Mode evidence.

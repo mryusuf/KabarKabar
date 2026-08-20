@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phases 0–6, 7A, 7B, 7C, and the reviewed 7D candidate are complete locally. Phase 7E remains not started. The candidate still requires commit/push and one final anonymous clone check.
+> Status: Phases 0–7D are locally verified. Phase 7E has a local SwiftUI candidate under adversarial review; it is not a submission or release approval.
 
 ## Goal
 
@@ -77,7 +77,32 @@ a page response from appending after a newer refresh began. Paging now uses
 country-scoped operation generations, ViewModel job tokens, and a Room
 transaction with conflict-ignore inserts. A failed page leaves the visible list
 intact and returns to a simple `Load more` action; it never becomes a blocking
-list error. Phase 7E remains out of scope for this checkpoint.
+list error.
+
+## Phase 7E Review Status
+
+Phase 7E is a local candidate, not a final release. SwiftUI owns presentation
+only. `IOSDependencyContainer` supplies the shared `ArticleRepository`, and
+`FlowWrapper` exposes cancellable shared observations on the main dispatcher.
+Swift does not implement NewsAPI requests, Room/SQL persistence, country cache
+isolation, stable article IDs, or paging/dedupe.
+
+If the ignored iOS `Config.local.xcconfig` is absent or its key is blank, the
+native UI intentionally observes the existing Room cache without attempting a
+remote sync. Configure the local key to enable fresh headlines and paging.
+
+- [x] Apple simulator/device framework links and Xcode app build
+- [x] native list, prominent first row, detail, back navigation, and viewer
+- [x] shared US/ID selector and country-scoped repository calls
+- [x] shared paging calls with a non-blocking footer failure path
+- [x] loading, empty, blocking error, and cached refresh-failure presentation
+- [x] cache-only startup when local iOS API configuration is absent
+- [x] left thumbnails for later rows when image URLs are available
+- [x] cancellable Flow bridge with weak Swift callbacks and operation generations
+- [x] local ignored iOS API-key configuration and reproducible shared schemes
+- [x] one deterministic iOS launch UI test; broader iOS flow tests remain limited
+- [x] Simulator Computer Use QA for list/detail/back/viewer/country/cache failure/theme/Dynamic Type
+- [ ] final Phase 7 audit, clean-clone verification, commit/push, and release decision
 
 ## Tech Stack
 
@@ -106,7 +131,9 @@ sharedLogic / Domain  <----- sharedLogic / Data
                                   repository implementation
 ```
 
-The existing `sharedUI` module is not part of the target architecture. Android presentation remains in `androidApp`; iOS UI is outside core scope.
+The existing `sharedUI` module is not part of the target architecture. Android
+presentation remains in `androidApp`; the native iOS UI is a thin Phase 7E
+bonus layer over the shared repository.
 
 Offline-first data flow:
 
@@ -178,6 +205,62 @@ is covered by shared tests.
 The key must be treated as public client configuration: Android packages can be
 inspected. Never log it, put it in shared domain state, or commit it to source
 control. The repository contains only the setup instructions above.
+
+## iOS Setup & Run
+
+### Prerequisites
+
+- macOS with Xcode 15.0+ installed.
+- Android Studio with the KMP project open.
+- A configured local iOS xcconfig; `local.properties` is still used by Gradle and Android.
+
+### Build & Run
+
+1. Copy the ignored iOS configuration and fill it locally:
+
+    ```bash
+    cp iosApp/Configuration/Config.local.xcconfig.example \
+      iosApp/Configuration/Config.local.xcconfig
+    # Edit Config.local.xcconfig and set NEWS_API_KEY to a local key.
+    ```
+
+    Do not edit `Koin.swift` or commit the local configuration. Xcode reads the
+    key from the generated Info.plist setting; `local.properties` is not read
+    automatically by Xcode.
+2. Build the shared Apple frameworks:
+
+    ```bash
+    ./gradlew :sharedLogic:linkDebugFrameworkIosSimulatorArm64 \
+      :sharedLogic:linkDebugFrameworkIosArm64
+    ```
+
+3. Build the app or open `iosApp/iosApp.xcodeproj` in Xcode:
+
+    ```bash
+    xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
+      -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' build
+    ```
+
+4. Run the deterministic launch test scheme:
+
+    ```bash
+    xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppTests \
+      -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' test
+    ```
+
+### iOS Architecture
+
+The iOS application uses native **SwiftUI** for presentation.
+- **SharedLogic**: Provides the `ArticleRepository`, `Article` domain models,
+  country identity, Room-backed offline-first repository, Ktor synchronization,
+  paging/dedupe, and `FlowWrapper` for observation.
+- **Swift adapters**: `ArticleListViewModel` and `ArticleDetailViewModel` map
+  shared observations/results to native state, cancel observations on disposal,
+  and keep refresh failures non-blocking when cache exists.
+- **Native UI**: SwiftUI provides the list/detail/viewer, `.refreshable`, native
+  navigation, system appearance, and Dynamic Type. `AsyncImage` is limited to
+  presentation-only image loading; article synchronization and persistence stay
+  in shared code.
 
 ### Submission country decision
 
@@ -319,31 +402,34 @@ Potential bonuses:
 - [x] full-screen image viewer (Phase 7B),
 - [x] country selection and country-aware offline isolation (Phase 7C),
 - [ ] commonTest coverage,
-- [ ] shared iOS target / iOS app if practical,
+- [x] native SwiftUI iOS application (Phase 7E),
 - [x] pagination (Phase 7D),
 - [ ] full accessibility audit beyond the Phase 7A baseline.
 
 ## Known Limitations
 
-- **Offline Images**: Articles images depend on the Coil disk cache. If an image was not loaded while online, it will not be available offline. Full offline image persistence is out of scope.
+- **Offline Images**: Android images depend on Coil's disk cache and the iOS bonus UI uses `AsyncImage`; if an image was not loaded while online, it will not be available offline. Full offline image persistence is out of scope.
 - **NewsAPI Content**: NewsAPI typically provides a short description or snippet rather than the full article body. The app displays what is available from the API.
 - **Country Availability**: Some countries may return empty results from NewsAPI depending on current news volume or provider availability. The app defaults to `US (country=us)`; `ID (country=id)` remains an independent cache and may show Empty.
+- **iOS Test Depth**: The iOS project has one deterministic launch UI test. The richer state and repository matrix remains covered by shared KMP and Android tests; the iOS Simulator manual pass supplements but does not replace those tests.
+- **Submission State**: This working tree is an uncommitted candidate. `release-v1.0.0` is the immutable fallback; no Phase 8 work or release tag is authorized by this review.
 
 ## Future Work / Bonuses
 - **Country Selection Persistence**: Preserve the selected country across launches; 7C currently defaults to US on a new launch.
-- **Pagination**: Paging is implemented for the Android list; paging metadata is
-  kept in the repository instance and is reset by a successful refresh.
+- **Pagination**: Paging metadata is kept in the shared repository instance and
+  is reset by a successful refresh. Both Android and iOS call the shared
+  load-more path; iOS uses a near-end row trigger.
 - **Accessibility**: Conduct a full WCAG audit and improve screen reader support beyond the Phase 7A baseline.
-- **iOS Application**: Build a native SwiftUI application using the shared logic.
+- **iOS Application**: Extend deterministic iOS UI coverage beyond the launch-shell test if Phase 7E is retained after final audit.
 
 ## Submission Checklist
 
 - [x] Public GitHub/GitLab repository
-- [x] Clean checkout is runnable after API-key setup
+- [ ] Candidate clean checkout is runnable after API-key setup (pending final audit)
 - [x] No real API key in repository or git history
 - [x] Required behavior works
 - [x] Required tests pass
-- [x] README setup instructions verified on a clean state
+- [ ] README setup instructions verified on a clean candidate state
 - [x] Architecture and trade-offs documented
 - [x] 3+ Android Studio Agent Mode tasks documented
 - [x] At least 1 real AI mistake/correction documented

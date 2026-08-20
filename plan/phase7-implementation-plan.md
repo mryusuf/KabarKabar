@@ -4,7 +4,7 @@
 
 - Baseline: `release-v1.0.0`
 - Baseline meaning: audited Phase 0–6 submission-safe release.
-- Phase 7: 7A, 7B, 7C, and the reviewed 7D candidate are complete locally; 7E remains NOT STARTED.
+- Phase 7: 7A, 7B, 7C, and 7D are locally verified; 7E has a reviewed local candidate with the final Phase 7 audit still pending.
 - Final target: consider `release-v1.1.0` only after whole-Phase-7 audit and clean-clone verification.
 - Phase 8 modularization: deferred until after submission.
 
@@ -181,25 +181,79 @@ anonymous clone remain submission gates. Phase 7E was not started.
 
 # Phase 7E — Native iOS UI
 
-- [ ] verify current iOS framework integration
-- [ ] native SwiftUI app target/project
-- [ ] thin observable/presentation adapter
-- [ ] shared repository/data used
-- [ ] List + prominent first item concept
-- [ ] Loading / Empty / Error
-- [ ] pull-to-refresh
-- [ ] Detail + native back
-- [ ] offline list/detail
-- [ ] native dark/light
-- [ ] Dynamic Type/accessibility
-- [ ] 7B viewer if retained
-- [ ] 7C selector if retained
-- [ ] 7D load-more if retained
-- [ ] iOS tests
-- [ ] Simulator QA
-- [ ] README iOS setup/limitations
-- [ ] Android full regression remains green
-- [ ] Codex 7E gate: `SAFE TO START FINAL PHASE 7 AUDIT: YES`
+- [x] verify current iOS framework integration
+- [x] native SwiftUI app target/project
+- [x] thin observable/presentation adapter
+- [x] shared repository/data used
+- [x] List + prominent first item concept
+- [x] Loading / Empty / Error
+- [x] pull-to-refresh implementation
+- [x] Detail + native back
+- [x] offline list/detail and cache-preserving refresh failure
+- [x] native dark/light
+- [x] Dynamic Type/accessibility baseline
+- [x] 7B viewer retained
+- [x] 7C selector retained
+- [x] 7D load-more calls retained
+- [x] iOS launch UI test target and shared test scheme
+- [x] Simulator QA
+- [x] README iOS setup/limitations
+- [x] Android full regression remains green
+- [x] Codex 7E gate: `SAFE TO START FINAL PHASE 7 AUDIT: YES` (candidate is not release-approved)
+- [ ] final Phase 7 audit: clean clone, history/secret scan, candidate commit/push, and release decision
+
+## Phase 7E Codex adversarial review and remediation — 20 August 2026
+
+The initial candidate was not accepted from its Agent Mode summary. Xcode first
+failed on a nonexistent `SyncError.message`; static review also found invalid
+Swift `Article` fields, ignored `RefreshResult.Failure`, hard-coded US detail
+navigation, and a Flow bridge whose strong callback/self ownership could retain
+the collector after disposal. The candidate also lacked an Xcode test action.
+
+The remediation keeps SwiftUI presentation-only: the shared repository remains
+the sole article synchronization/persistence/paging boundary, `FlowWrapper`
+owns a cancellable main-dispatcher scope, and Swift callbacks are weak. Shared
+Koin is no longer exported transitively into the Apple framework; Android gets
+an Android-only composition bridge. iOS API-key setup is an ignored xcconfig,
+and `iosAppTests` provides a reproducible launch test.
+
+Local evidence:
+
+- shared/Android clean gate: 56 Android shared, 58 iOS shared, 34 Android unit,
+  lint/check/assemble all green;
+- Pixel_9 connected gate: 17/17 passed;
+- iOS framework device/simulator links and Xcode app build: passed;
+- `iosAppTests` on iPhone 17 Pro Max / iOS 26.3.1: 1/1 passed;
+- Computer Use Simulator QA: list/prominent first item, detail/back, viewer,
+  US/ID cache isolation, cached refresh failure, light/dark, and Dynamic Type
+  observed. The iOS `.refreshable` implementation remains covered by source
+  and compilation; the manual gesture was not used as deterministic evidence.
+
+The candidate remains uncommitted and the immutable `release-v1.0.0` fallback
+is unchanged. No Phase 8/module work was started.
+
+## Phase 7E feedback remediation — 20 August 2026
+
+The reported iOS banner was independently reproduced. The checkout had no
+ignored `Config.local.xcconfig`, so the Info.plist key expanded to blank; Ktor
+returned a remote API failure while Room correctly exposed the existing cache.
+The iOS composition root now disables remote synchronization until a non-empty
+local key exists, preventing a misleading cached-list banner while preserving
+the genuine non-blocking banner for configured-but-failing remote services.
+
+Later SwiftUI rows now load available image URLs into 112x84 left thumbnails,
+and the list asks the shared repository for the next page from the final four
+rows rather than only the exact last row. No Swift-side paging, persistence, or
+deduplication was added.
+
+Post-remediation evidence: Xcode app build passed, `iosAppTests` passed 1/1,
+the full Gradle clean gate passed, and the Pixel_9 connected suite passed 17/17.
+
+The follow-up country-switch regression reproduced the no-network ID empty-cache
+path. The UI test initially failed because the Empty state exposed the API-key
+setup copy; it now presents ordinary country-scoped Empty state and passes 2/2
+on the iPhone 17 Pro Max simulator. Shared country identity and repository
+behavior were not changed.
 
 # Whole Phase 7 final gate
 
