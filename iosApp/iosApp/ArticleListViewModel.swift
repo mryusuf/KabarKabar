@@ -127,6 +127,7 @@ final class ArticleListViewModel: ObservableObject {
         let generation = operationGeneration
         let repository = repository
         let country = country
+        isRefreshing = true
         initialSyncTask = Task { [weak self] in
             do {
                 let result = try await repository.refreshArticles(country: country)

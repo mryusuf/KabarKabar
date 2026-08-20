@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phases 0–7D are locally verified. Phase 7E has a local SwiftUI candidate under adversarial review; it is not a submission or release approval.
+> Status: Phases 0–6 remain protected by `release-v1.0.0`. Phases 7A–7E pass the local final audit after remediation; commit/push and final clean-clone verification are still required before release approval.
 
 ## Goal
 
@@ -100,9 +100,10 @@ remote sync. Configure the local key to enable fresh headlines and paging.
 - [x] left thumbnails for later rows when image URLs are available
 - [x] cancellable Flow bridge with weak Swift callbacks and operation generations
 - [x] local ignored iOS API-key configuration and reproducible shared schemes
-- [x] one deterministic iOS launch UI test; broader iOS flow tests remain limited
+- [x] two deterministic iOS launch/country UI tests; broader iOS flow tests remain limited
 - [x] Simulator Computer Use QA for list/detail/back/viewer/country/cache failure/theme/Dynamic Type
-- [ ] final Phase 7 audit, clean-clone verification, commit/push, and release decision
+- [x] local final Phase 7 audit and full Android/iOS regression gates
+- [ ] commit/push, final clean-clone verification, and release decision
 
 ## Tech Stack
 
@@ -311,7 +312,7 @@ The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 22
 `ThemeTest` cases, and 3 navigation boundary tests (34 total). The
 instrumented task runs 17 tests, including T4, T5, Phase 7A state checks, the
 Phase 7B viewer matrix, country switching, Room migration, and pagination. The
-shared logic suite currently runs 56 tests on Android and 58 on iOS.
+shared logic suite currently runs 57 tests on Android and 59 on iOS.
 
 To manually verify the current Android application on a connected device:
 
@@ -411,7 +412,7 @@ Potential bonuses:
 - **Offline Images**: Android images depend on Coil's disk cache and the iOS bonus UI uses `AsyncImage`; if an image was not loaded while online, it will not be available offline. Full offline image persistence is out of scope.
 - **NewsAPI Content**: NewsAPI typically provides a short description or snippet rather than the full article body. The app displays what is available from the API.
 - **Country Availability**: Some countries may return empty results from NewsAPI depending on current news volume or provider availability. The app defaults to `US (country=us)`; `ID (country=id)` remains an independent cache and may show Empty.
-- **iOS Test Depth**: The iOS project has one deterministic launch UI test. The richer state and repository matrix remains covered by shared KMP and Android tests; the iOS Simulator manual pass supplements but does not replace those tests.
+- **iOS Test Depth**: The iOS project has two deterministic launch/country UI tests. The richer state and repository matrix remains covered by shared KMP and Android tests; the iOS Simulator manual pass supplements but does not replace those tests.
 - **Submission State**: This working tree is an uncommitted candidate. `release-v1.0.0` is the immutable fallback; no Phase 8 work or release tag is authorized by this review.
 
 ## Future Work / Bonuses
@@ -420,7 +421,7 @@ Potential bonuses:
   is reset by a successful refresh. Both Android and iOS call the shared
   load-more path; iOS uses a near-end row trigger.
 - **Accessibility**: Conduct a full WCAG audit and improve screen reader support beyond the Phase 7A baseline.
-- **iOS Application**: Extend deterministic iOS UI coverage beyond the launch-shell test if Phase 7E is retained after final audit.
+- **iOS Application**: Broader deterministic iOS detail/pagination-failure UI coverage remains optional future hardening; shared KMP and Android tests cover those behavior matrices today.
 
 ## Submission Checklist
 

@@ -37,7 +37,7 @@ struct ArticleDetailView: View {
         .navigationTitle("Article")
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $isViewerPresented) {
-            if let article = viewModel.article, let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
+            if let article = viewModel.article, let url = usableImageURL(from: article.imageUrl) {
                 ImageViewer(url: url)
             }
         }
@@ -46,7 +46,7 @@ struct ArticleDetailView: View {
     @ViewBuilder
     private func articleContent(_ article: Article) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            if let imageUrl = article.imageUrl, let url = URL(string: imageUrl) {
+            if let url = usableImageURL(from: article.imageUrl) {
                 Button {
                     isViewerPresented = true
                 } label: {

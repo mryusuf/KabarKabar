@@ -19,6 +19,20 @@ func userFacingMessage(for error: SyncError) -> String {
 
 let unexpectedErrorMessage = "Something went wrong. Try again."
 
+func usableImageURL(from rawImageURL: String?) -> URL? {
+    guard let rawImageURL else { return nil }
+    let imageURL = rawImageURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !imageURL.isEmpty,
+          let url = URL(string: imageURL),
+          let scheme = url.scheme?.lowercased(),
+          (scheme == "http" || scheme == "https"),
+          let host = url.host,
+          !host.isEmpty else {
+        return nil
+    }
+    return url
+}
+
 func publishedDate(for article: Article) -> Date {
     Date(timeIntervalSince1970: TimeInterval(article.publishedAt.value) / 1_000)
 }

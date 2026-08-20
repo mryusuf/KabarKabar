@@ -10,7 +10,7 @@ Simulator: iPhone 17 Pro Max, iOS 26.3.1, `5D01A82B-029F-4726-BC8C-CB2CC1B93AE4`
 - `./gradlew :androidApp:connectedDebugAndroidTest` — 17/17 Pixel_9 tests passed.
 - `./gradlew :sharedLogic:linkDebugFrameworkIosArm64 :sharedLogic:linkDebugFrameworkIosSimulatorArm64` — passed.
 - `xcodebuild ... -scheme iosApp ... build` — passed.
-- `xcodebuild ... -scheme iosAppTests ... test` — 1/1 passed with the `--ui-test-no-network` launch fixture; result bundle `/tmp/kabarkabar-phase7e-deterministic-test.xcresult`.
+- `xcodebuild ... -scheme iosAppTests ... test` — 2/2 passed with the `--ui-test-no-network` launch fixture.
 
 The original `iosApp` user scheme had no test action; the candidate now contains
 the reproducible shared `iosAppTests` scheme and `iosAppUITests` target.
@@ -23,7 +23,7 @@ the reproducible shared `iosAppTests` scheme and `iosAppUITests` target.
 | Prominent first item | PASS | First row rendered with hero image; later rows compact |
 | Loading / Empty / Error | PASS | Source state mapping; blank-key no-cache Error; ID successful-empty state |
 | Pull-to-refresh | PASS* | SwiftUI `.refreshable` awaits shared refresh; compiled and Android regression is green |
-| Cached refresh failure non-blocking | PASS | Blank-key build preserved US rows and showed banner |
+| Cached refresh failure non-blocking | PASS | Shared repository/Android gate preserves cache on configured remote failure; missing iOS key uses cache-only startup without a misleading banner |
 | Detail | PASS | Computer Use opened cached article detail |
 | Back navigation | PASS | Native back returned to the same list |
 | Offline list | PASS | Cached list remained visible after refresh failure |
@@ -76,3 +76,20 @@ was performed.
 - Verification after remediation: Xcode app build passed, `iosAppTests` passed
   2/2, the full Gradle clean gate passed, and Pixel_9 connected tests passed
   17/17.
+
+## Whole Phase 7 final audit remediation — 20 August 2026
+
+- The shared repository now serializes country generation advancement with
+  refresh/page persistence, closing the stale-page mapping-to-append race. The
+  regression test `refresh_started_during_page_mapping_invalidates_page_before_append`
+  fails on the prior implementation and passes after the fix.
+- iOS initial synchronization is represented as an in-flight refresh, so manual
+  pull-to-refresh cannot overlap it. SwiftUI list/detail/viewer image handling
+  now accepts only HTTP(S) URLs with a non-empty host, matching Android's
+  presentation boundary.
+- Final local evidence: 57 Android shared tests, 59 iOS shared tests, 34
+  Android unit tests, lint/check/assemble green, 17/17 Pixel_9 tests, Xcode app
+  build green, and 2/2 `iosAppTests` green.
+- The local audit verdict is `PHASE 7 APPROVED AFTER FIXES`. The working tree
+  remains uncommitted, `release-v1.0.0` is unchanged, and no release tag is
+  authorized until commit/push and a final clean-clone verification.

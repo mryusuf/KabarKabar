@@ -194,8 +194,7 @@ private struct ArticleRowView: View {
     }
 
     private var imageURL: URL? {
-        guard let imageUrl = article.imageUrl else { return nil }
-        return URL(string: imageUrl)
+        usableImageURL(from: article.imageUrl)
     }
 }
 

@@ -4,7 +4,7 @@
 
 - Baseline: `release-v1.0.0`
 - Baseline meaning: audited Phase 0–6 submission-safe release.
-- Phase 7: 7A, 7B, 7C, and 7D are locally verified; 7E has a reviewed local candidate with the final Phase 7 audit still pending.
+- Phase 7: 7A–7E pass the local final audit after remediation; release still requires commit/push and final clean-clone verification.
 - Final target: consider `release-v1.1.0` only after whole-Phase-7 audit and clean-clone verification.
 - Phase 8 modularization: deferred until after submission.
 
@@ -200,7 +200,8 @@ anonymous clone remain submission gates. Phase 7E was not started.
 - [x] README iOS setup/limitations
 - [x] Android full regression remains green
 - [x] Codex 7E gate: `SAFE TO START FINAL PHASE 7 AUDIT: YES` (candidate is not release-approved)
-- [ ] final Phase 7 audit: clean clone, history/secret scan, candidate commit/push, and release decision
+- [x] local final Phase 7 audit, history/secret scan, and full Android/iOS regression gate
+- [ ] candidate commit/push, final clean-clone verification, and release decision
 
 ## Phase 7E Codex adversarial review and remediation — 20 August 2026
 
@@ -219,11 +220,11 @@ and `iosAppTests` provides a reproducible launch test.
 
 Local evidence:
 
-- shared/Android clean gate: 56 Android shared, 58 iOS shared, 34 Android unit,
+- shared/Android clean gate: 57 Android shared, 59 iOS shared, 34 Android unit,
   lint/check/assemble all green;
 - Pixel_9 connected gate: 17/17 passed;
 - iOS framework device/simulator links and Xcode app build: passed;
-- `iosAppTests` on iPhone 17 Pro Max / iOS 26.3.1: 1/1 passed;
+- `iosAppTests` on iPhone 17 Pro Max / iOS 26.3.1: 2/2 passed;
 - Computer Use Simulator QA: list/prominent first item, detail/back, viewer,
   US/ID cache isolation, cached refresh failure, light/dark, and Dynamic Type
   observed. The iOS `.refreshable` implementation remains covered by source
@@ -246,7 +247,7 @@ and the list asks the shared repository for the next page from the final four
 rows rather than only the exact last row. No Swift-side paging, persistence, or
 deduplication was added.
 
-Post-remediation evidence: Xcode app build passed, `iosAppTests` passed 1/1,
+Post-remediation evidence: Xcode app build passed, `iosAppTests` passed 2/2,
 the full Gradle clean gate passed, and the Pixel_9 connected suite passed 17/17.
 
 The follow-up country-switch regression reproduced the no-network ID empty-cache
@@ -255,19 +256,33 @@ setup copy; it now presents ordinary country-scoped Empty state and passes 2/2
 on the iPhone 17 Pro Max simulator. Shared country identity and repository
 behavior were not changed.
 
+## Whole Phase 7 final audit remediation — 20 August 2026
+
+The final audit added a deterministic shared regression for a refresh beginning
+during page-response mapping. The repository now serializes generation
+advancement with refresh/page persistence, so a stale page cannot append after
+its country has been invalidated. The iOS list model also marks initial sync as
+an active refresh, and SwiftUI image presentation now applies the same HTTP(S)
+and non-empty-host validation as Android.
+
+The local verdict is `PHASE 7 APPROVED AFTER FIXES`; all five bonuses are
+retained. The candidate is still uncommitted, `release-v1.0.0` is unchanged,
+and no release tag is authorized before commit/push and final clean-clone
+verification.
+
 # Whole Phase 7 final gate
 
-- [ ] decide retained bonuses
-- [ ] revert any bonus that weakens submission
-- [ ] full Android gate
-- [ ] full iOS gate if retained
-- [ ] Android emulator QA
-- [ ] iOS simulator QA
+- [x] decide retained bonuses
+- [x] revert any bonus that weakens submission
+- [x] full Android gate
+- [x] full iOS gate if retained
+- [x] Android emulator QA
+- [x] iOS simulator QA
 - [ ] clean-clone verification
-- [ ] secret/history audit
-- [ ] README bonus table accurate
-- [ ] known issues accurate
-- [ ] AI log accurate
+- [x] secret/history audit
+- [x] README bonus table accurate
+- [x] known issues accurate
+- [x] AI log accurate
 - [ ] public remote updated
 - [ ] final anonymous clone
 - [ ] only then consider `release-v1.1.0`

@@ -36,6 +36,7 @@ class OfflineFirstArticleRepository(
 ) : ArticleRepository {
 
     private val countryMutexes = NewsCountry.values().associateWith { Mutex() }
+    private val generationMutexes = NewsCountry.values().associateWith { Mutex() }
     private val pagingStates = MutableStateFlow<Map<NewsCountry, PagingState>>(emptyMap())
     private val operationGenerations = MutableStateFlow<Map<NewsCountry, Long>>(emptyMap())
     private val pageSize = 20
@@ -48,17 +49,20 @@ class OfflineFirstArticleRepository(
 
     private fun mutexFor(country: NewsCountry): Mutex = countryMutexes.getValue(country)
 
+    private fun generationMutexFor(country: NewsCountry): Mutex = generationMutexes.getValue(country)
+
     private fun currentGeneration(country: NewsCountry): Long =
         operationGenerations.value[country] ?: 0L
 
-    private fun advanceGeneration(country: NewsCountry): Long {
-        var nextGeneration = 0L
-        operationGenerations.update { generations ->
-            nextGeneration = (generations[country] ?: 0L) + 1L
-            generations + (country to nextGeneration)
+    private suspend fun advanceGeneration(country: NewsCountry): Long =
+        generationMutexFor(country).withLock {
+            var nextGeneration = 0L
+            operationGenerations.update { generations ->
+                nextGeneration = (generations[country] ?: 0L) + 1L
+                generations + (country to nextGeneration)
+            }
+            nextGeneration
         }
-        return nextGeneration
-    }
 
     override fun observeArticles(country: NewsCountry): Flow<ArticleObservation<List<Article>>> {
         return flow {
@@ -140,18 +144,20 @@ class OfflineFirstArticleRepository(
             }
 
             try {
-                if (generation != currentGeneration(country)) {
-                    return@withLock RefreshResult.Success
+                generationMutexFor(country).withLock {
+                    if (generation != currentGeneration(country)) {
+                        return@withLock RefreshResult.Success
+                    }
+                    localDataSource.replaceSnapshot(entities, country)
+                    pagingStates.update { states ->
+                        states + (country to PagingState(
+                            currentPage = 1,
+                            totalResults = totalResults,
+                            hasMore = totalResults > pageSize,
+                        ))
+                    }
+                    RefreshResult.Success
                 }
-                localDataSource.replaceSnapshot(entities, country)
-                pagingStates.update { states ->
-                    states + (country to PagingState(
-                        currentPage = 1,
-                        totalResults = totalResults,
-                        hasMore = totalResults > pageSize,
-                    ))
-                }
-                RefreshResult.Success
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 RefreshResult.Failure(SyncError.Persistence)
@@ -217,18 +223,20 @@ class OfflineFirstArticleRepository(
             }
 
             try {
-                localDataSource.appendArticles(entities, country)
-                if (generation != currentGeneration(country)) {
-                    return@withLock RefreshResult.Success
+                generationMutexFor(country).withLock {
+                    if (generation != currentGeneration(country)) {
+                        return@withLock RefreshResult.Success
+                    }
+                    localDataSource.appendArticles(entities, country)
+                    pagingStates.update { states ->
+                        states + (country to currentState.copy(
+                            currentPage = nextPage,
+                            totalResults = totalResults,
+                            hasMore = (nextPage * pageSize) < totalResults,
+                        ))
+                    }
+                    RefreshResult.Success
                 }
-                pagingStates.update { states ->
-                    states + (country to currentState.copy(
-                        currentPage = nextPage,
-                        totalResults = totalResults,
-                        hasMore = (nextPage * pageSize) < totalResults,
-                    ))
-                }
-                RefreshResult.Success
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 RefreshResult.Failure(SyncError.Persistence)

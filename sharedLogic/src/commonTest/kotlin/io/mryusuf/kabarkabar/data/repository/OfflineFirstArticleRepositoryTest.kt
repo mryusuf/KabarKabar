@@ -13,12 +13,14 @@ import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import io.mryusuf.kabarkabar.domain.model.RefreshResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
@@ -680,6 +682,55 @@ class OfflineFirstArticleRepositoryTest {
         assertEquals(RefreshResult.Success, page.await())
         assertEquals(RefreshResult.Success, refresh.await())
         assertEquals(listOf("Article 3"), localDataSource.articles.value.map { it.title })
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun refresh_started_during_page_mapping_invalidates_page_before_append() = runTest {
+        remoteDataSource.response = NewsApiResponseDto(
+            status = "ok",
+            totalResults = 40,
+            articles = listOf(articleDto(1)),
+        )
+        repository.refreshArticles(NewsCountry.US)
+
+        val testScope = this
+        val refreshResult = CompletableDeferred<RefreshResult>()
+        val mappingTriggered = CompletableDeferred<Unit>()
+        var mappingListTriggered = false
+        val pageArticles = object : AbstractList<NewsApiArticleDto>() {
+            override val size: Int
+                get() {
+                    if (!mappingListTriggered) {
+                        mappingListTriggered = true
+                        testScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                            refreshResult.complete(repository.refreshArticles(NewsCountry.US))
+                        }
+                        mappingTriggered.complete(Unit)
+                    }
+                    return 1
+                }
+
+            override fun get(index: Int): NewsApiArticleDto = articleDto(2)
+        }
+        remoteDataSource.fetchHandler = { requestNumber ->
+            when (requestNumber) {
+                2 -> NewsApiResponseDto(
+                    status = "ok",
+                    totalResults = 40,
+                    articles = pageArticles,
+                )
+                3 -> throw IOException("offline")
+                else -> error("Unexpected request $requestNumber")
+            }
+        }
+
+        val page = async { repository.loadMoreArticles(NewsCountry.US) }
+        mappingTriggered.await()
+
+        assertEquals(RefreshResult.Success, page.await())
+        assertEquals(RefreshResult.Failure(SyncError.Network), refreshResult.await())
+        assertEquals(listOf("Article 1"), localDataSource.articles.value.map { it.title })
     }
 
     @Test
