@@ -152,10 +152,12 @@ tests had not started.
 
 **Country configuration clarification (18 August 2026):** Inosoft clarified
 that the PDF's `country=id` was illustrative and approved `country=us` because
-it is currently the only non-empty country. The country now comes from the
-existing `NewsApiConfig` boundary and is set to `us` by Android composition;
-no selector or automatic fallback was added. Deterministic empty-state tests
-remain independent of live NewsAPI results.
+it is currently the only non-empty country. At this pre-7C checkpoint the
+Android composition supplied `us` through the configuration boundary and no
+selector or automatic fallback was added. Deterministic empty-state tests
+remain independent of live NewsAPI results. Phase 7C supersedes that temporary
+single-country composition with the typed US/ID selector and explicit
+country-scoped repository contract documented in `plan/phase7-implementation-plan.md`.
 
 **Exit:** core flows are implemented, with prior online/offline manual evidence
 recorded; the current clean-device run was limited by the configured endpoint
@@ -226,13 +228,48 @@ public-clone verification.
 Priority order:
 
 1. [ ] `commonTest` coverage / shared-target confidence
-2. [ ] dark mode polish
+2. [x] dark mode polish (Phase 7A system-theme review)
 3. [ ] iOS shared target or minimal iOS proof if low-risk
-4. [ ] accessibility polish
-5. [ ] pagination
-6. [ ] full-screen image viewer
+4. [x] accessibility baseline (Phase 7A); full audit remains future work
+5. [x] pagination (Phase 7D reviewed locally)
+6. [x] full-screen image viewer (Phase 7B)
+7. [x] country selection and country-aware offline correctness (Phase 7C)
 
 Do not add bonus modularization unless it solves a real problem.
+
+**Phase 7A Codex review (19 August 2026):** The Android presentation candidate
+passed the requested clean gate and Pixel_9 connected suite after correcting
+system-bar icon polarity, optional-image layout reservation, and state-copy
+readability. Regression coverage now exercises the first-item/detail missing-image
+path and real `MainActivity` Loading, Empty, and blocking Error states. No
+`sharedLogic` or Phase 0–6 data/domain contract changes were required.
+
+**Phase 7A image follow-up (19 August 2026):** Runtime review found that the
+prominent first row could reserve hero space while a remote image was loading or
+unavailable, leaving a visually empty surface. `ProminentArticleRow` now trims
+image input, renders a themed local fallback for missing/blank URLs, and supplies
+the same fallback during Coil loading/failure. A deterministic Pixel_9 regression
+test covers the missing-image first-item path; the 7B viewer and shared data layer
+remain unchanged.
+
+**Phase 7B implementation and adversarial remediation (19 August 2026):**
+Implemented the full-screen image viewer with dark backdrop and close
+affordance. The review corrected double-decoding of Navigation's image URL
+argument, rejected blank/malformed image URLs before exposing the viewer, made
+repeated viewer opens single-top, and made close placement inset-aware. The
+clean gate passed with 36 Android shared tests, 37 iOS simulator shared tests,
+21 Android application unit tests, and 13 Pixel_9 connected tests. `git diff --check` also
+passed. Detail -> Viewer -> Detail, system back, list back-stack preservation,
+missing/failed image safety, and no article refresh on viewer open were covered.
+
+**Phase 7D implementation and adversarial remediation (19 August 2026):**
+Pagination was reviewed through the footer/scroll trigger, ViewModel, repository,
+remote metadata, Room append, and persisted observation path. The initial
+candidate required fixes for stale page completions, unknown/invalid paging
+metadata, cross-page duplicate replacement, and missing UI retry coverage.
+The final local gate passed with 56 Android shared tests, 58 iOS simulator tests,
+34 Android application unit tests, and 17 Pixel_9 connected tests. The candidate
+is still uncommitted and Phase 7E remains intentionally untouched.
 
 ## Suggested Calendar
 

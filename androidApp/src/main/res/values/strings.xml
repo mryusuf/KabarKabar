@@ -3,9 +3,13 @@
     <string name="article_list_title">KabarKabar</string>
     <string name="article_detail_title">Article Detail</string>
     <string name="article_not_found">Article not found.</string>
+    <string name="article_not_found_title">Article not found</string>
 
     <string name="loading_articles">Loading articles…</string>
+    <string name="loading_article">Loading article…</string>
     <string name="empty_articles">No articles found.</string>
+    <string name="empty_articles_title">No headlines found</string>
+    <string name="error_title">Something went wrong</string>
     <string name="error_loading_articles">Failed to load articles.</string>
     <string name="error_network">Network unavailable. Check your connection.</string>
     <string name="error_remote">News server is currently unavailable.</string>
@@ -14,6 +18,12 @@
     <string name="error_unknown">An unexpected error occurred.</string>
 
     <string name="retry">Retry</string>
+    <string name="retry_load_more">Load more</string>
     <string name="back">Back</string>
+    <string name="close">Close</string>
+    <string name="country_selector_content_description">Country: %1$s</string>
+    <string name="country_us_accessibility_label">United States (US)</string>
+    <string name="country_id_accessibility_label">Indonesia (ID)</string>
     <string name="article_image_content_description">Article image</string>
+    <string name="article_image_unavailable_content_description">Article image unavailable</string>
 </resources>

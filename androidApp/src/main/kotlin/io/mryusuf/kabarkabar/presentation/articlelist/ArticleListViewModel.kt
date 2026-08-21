@@ -5,15 +5,19 @@ import androidx.lifecycle.viewModelScope
 import io.mryusuf.kabarkabar.domain.error.SyncError
 import io.mryusuf.kabarkabar.domain.model.Article
 import io.mryusuf.kabarkabar.domain.model.ArticleObservation
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import io.mryusuf.kabarkabar.domain.model.RefreshResult
 import io.mryusuf.kabarkabar.domain.repository.ArticleRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -23,6 +27,7 @@ import kotlinx.coroutines.launch
  * Orchestrates article-list presentation state from independent persisted-data
  * observation and synchronization-result streams.
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ArticleListViewModel(
     private val repository: ArticleRepository
 ) : ViewModel() {
@@ -51,15 +56,23 @@ class ArticleListViewModel(
     private data class SyncState(
         val attemptId: Long? = null,
         val isRunning: Boolean = false,
+        val isPaging: Boolean = false,
+        val isPagingError: Boolean = false,
+        val pagingAttemptId: Long? = null,
         val initialSyncCompleted: Boolean = false,
         val lastError: SyncError? = null,
         val pendingFailure: PendingRefreshFailure? = null,
     )
 
+    private val selectedCountry = MutableStateFlow(NewsCountry.US)
     private val observedArticles = MutableStateFlow(ObservedArticles())
     private val syncState = MutableStateFlow(SyncState())
     private val eventsChannel = Channel<ArticleListUiEvent>(capacity = Channel.BUFFERED)
     private var nextAttemptId = 0L
+    private var nextPagingAttemptId = 0L
+    private var countryGeneration = 0L
+    private var refreshJob: Job? = null
+    private var pagingJob: Job? = null
 
     /** One-shot effects are buffered until a collector receives them and never replayed. */
     val events = eventsChannel.receiveAsFlow()
@@ -72,8 +85,9 @@ class ArticleListViewModel(
     val uiState: StateFlow<ArticleListUiState> = combine(
         observedArticles,
         syncState,
-    ) { observed, sync ->
-        reduce(observed, sync)
+        selectedCountry,
+    ) { observed, sync, country ->
+        reduce(observed, sync, country)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
@@ -82,37 +96,52 @@ class ArticleListViewModel(
 
     init {
         viewModelScope.launch {
-            repository.observeArticles().collect(::recordObservation)
+            selectedCountry.flatMapLatest { country ->
+                repository.observeArticles(country)
+                    .onEach { observation -> recordObservation(country, observation) }
+            }.collect()
         }
         refresh()
     }
 
     /** Starts one synchronization unless another one is already in progress. */
     fun refresh() {
+        val country = selectedCountry.value
         val currentState = syncState.value
         if (currentState.isRunning) return
 
+        pagingJob?.cancel()
+        pagingJob = null
+
         val attemptId = ++nextAttemptId
+        val generation = countryGeneration
         syncState.value = currentState.copy(
             attemptId = attemptId,
             isRunning = true,
+            isPaging = false,
+            isPagingError = false,
+            pagingAttemptId = null,
             lastError = null,
             pendingFailure = null,
         )
 
-        viewModelScope.launch {
+        refreshJob = viewModelScope.launch {
             try {
                 val result = try {
-                    repository.refreshArticles()
+                    repository.refreshArticles(country)
                 } catch (error: CancellationException) {
                     throw error
                 } catch (_: Exception) {
                     RefreshResult.Failure(SyncError.Unknown)
                 }
-                recordRefreshResult(attemptId, result)
+                recordRefreshResult(attemptId, generation, country, result)
             } finally {
                 syncState.update { state ->
-                    if (state.attemptId == attemptId) {
+                    if (
+                        state.attemptId == attemptId &&
+                        generation == countryGeneration &&
+                        selectedCountry.value == country
+                    ) {
                         state.copy(isRunning = false)
                     } else {
                         state
@@ -122,7 +151,87 @@ class ArticleListViewModel(
         }
     }
 
-    private fun recordObservation(observation: ArticleObservation<List<Article>>) {
+    /** Triggers loading the next page of articles for the current country. */
+    fun loadMore() {
+        val country = selectedCountry.value
+        val currentState = syncState.value
+        if (currentState.isRunning || currentState.isPaging) return
+        if (observedArticles.value.lastData?.isNotEmpty() != true) return
+        if (!repository.canLoadMore(country)) return
+
+        val pagingAttemptId = ++nextPagingAttemptId
+        val generation = countryGeneration
+        syncState.update {
+            it.copy(
+                isPaging = true,
+                isPagingError = false,
+                pagingAttemptId = pagingAttemptId,
+            )
+        }
+
+        pagingJob = viewModelScope.launch {
+            try {
+                val result = try {
+                    repository.loadMoreArticles(country)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    RefreshResult.Failure(SyncError.Unknown)
+                }
+
+                syncState.update { state ->
+                    if (
+                        state.pagingAttemptId == pagingAttemptId &&
+                        generation == countryGeneration &&
+                        selectedCountry.value == country
+                    ) {
+                        state.copy(
+                            isPaging = false,
+                            isPagingError = result is RefreshResult.Failure,
+                            pagingAttemptId = null,
+                        )
+                    } else {
+                        state
+                    }
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                syncState.update { state ->
+                    if (
+                        state.pagingAttemptId == pagingAttemptId &&
+                        generation == countryGeneration &&
+                        selectedCountry.value == country
+                    ) {
+                        state.copy(
+                            isPaging = false,
+                            isPagingError = true,
+                            pagingAttemptId = null,
+                        )
+                    } else {
+                        state
+                    }
+                }
+            }
+        }
+    }
+
+    fun onCountrySelected(country: NewsCountry) {
+        if (selectedCountry.value == country) return
+        refreshJob?.cancel()
+        pagingJob?.cancel()
+        pagingJob = null
+        countryGeneration += 1
+        observedArticles.value = ObservedArticles()
+        syncState.value = SyncState()
+        selectedCountry.value = country
+        refresh()
+    }
+
+    private fun recordObservation(
+        country: NewsCountry,
+        observation: ArticleObservation<List<Article>>,
+    ) {
+        if (country != selectedCountry.value) return
         val previous = observedArticles.value
         observedArticles.value = previous.record(observation)
 
@@ -137,7 +246,13 @@ class ArticleListViewModel(
         deliverPendingRefreshErrorIfCacheExists()
     }
 
-    private fun recordRefreshResult(attemptId: Long, result: RefreshResult) {
+    private fun recordRefreshResult(
+        attemptId: Long,
+        generation: Long,
+        country: NewsCountry,
+        result: RefreshResult,
+    ) {
+        if (generation != countryGeneration || country != selectedCountry.value) return
         val current = syncState.value
         if (current.attemptId != attemptId) return
 
@@ -193,6 +308,7 @@ class ArticleListViewModel(
     private fun reduce(
         observed: ObservedArticles,
         sync: SyncState,
+        country: NewsCountry,
     ): ArticleListUiState {
         val content = when (val latest = observed.latest) {
             null -> when {
@@ -219,6 +335,10 @@ class ArticleListViewModel(
         return ArticleListUiState(
             content = content,
             isRefreshing = sync.isRunning && content is ArticleListContent.Data,
+            isPaging = sync.isPaging,
+            hasMore = repository.canLoadMore(country),
+            isPagingError = sync.isPagingError,
+            selectedCountry = country,
         )
     }
 

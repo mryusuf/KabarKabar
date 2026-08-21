@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import io.mryusuf.kabarkabar.ui.navigation.KabarKabarNavGraph
+import io.mryusuf.kabarkabar.ui.theme.KabarKabarTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -14,7 +15,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            MaterialTheme {
+            KabarKabarTheme {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     KabarKabarNavGraph()
                 }

@@ -2,6 +2,7 @@ package io.mryusuf.kabarkabar.data.mapper
 
 import io.mryusuf.kabarkabar.data.local.entity.ArticleEntity
 import io.mryusuf.kabarkabar.data.remote.dto.NewsApiArticleDto
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -68,9 +69,10 @@ class ArticleMapperTest {
             )
         )
         val result = ArticleMapper.mapToDomain(dtos) as ArticleMappingResult.Success
-        val entities = ArticleMapper.mapToEntities(result.articles)
+        val entities = ArticleMapper.mapToEntities(result.articles, NewsCountry.US)
 
         assertEquals(1, entities.size)
+        assertEquals("us", entities[0].countryCode)
         assertEquals("Title", entities[0].title)
         assertEquals("https://example.com/1", entities[0].url)
         assertEquals("Desc", entities[0].description)
@@ -137,6 +139,22 @@ class ArticleMapperTest {
         assertFailsWith<IllegalArgumentException> {
             ArticleEntity(
                 id = "article-url:https://example.com/other",
+                countryCode = "us",
+                url = "https://example.com/article",
+                title = "Title",
+                description = null,
+                imageUrl = null,
+                publishedAt = 1L
+            )
+        }
+    }
+
+    @Test
+    fun articleEntity_rejectsUnsupportedCountry() {
+        assertFailsWith<IllegalArgumentException> {
+            ArticleEntity(
+                id = "article-url:https://example.com/article",
+                countryCode = "gb",
                 url = "https://example.com/article",
                 title = "Title",
                 description = null,

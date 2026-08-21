@@ -216,22 +216,188 @@ N/A (Phase 5 Complete)
 
 ---
 
+## Entry 7
+
+**Task/category:**
+Phase 7B: Full-Screen Image Viewer
+
+**Prompt / context given to Agent Mode:**
+Implement a full-screen image viewer that can be opened from the article detail screen hero image. Use standard Compose Navigation, dark background, fit content scale, and a close button. Support system back button. Reuse existing Coil for image loading. Pass image URL via navigation.
+
+**What the agent produced:**
+Created `ImageViewerScreen.kt`, updated `NavRoutes`, `KabarKabarNavGraph.kt`, `ArticleDetailScreen.kt`, `strings.xml`, and `ArticleTestData.kt`. Added `ImageViewerTest.kt`.
+
+**My review:**
+The agent implemented the new screen and integrated it into the navigation graph. It added URL encoding/decoding for the navigation argument, but the independent Codex review below later found that the destination decoded the already-decoded argument a second time. The hero image in the detail screen was made clickable, and the image viewer provided the required full-screen experience with a dark background and a close affordance.
+
+**What I changed or rejected, and why:**
+1. **Wrong File Path**: I initially attempted to update `strings.xml` using an incorrect path (`androidApp/src/res/values/strings.xml` instead of `androidApp/src/main/res/values/strings.xml`). The tool correctly reported the error, and I fixed the path immediately.
+2. **Test Data Limitation**: I noticed that the existing `ArticleTestData` only contained articles with `null` image URLs, which would make testing the image viewer impossible. I added a new `articleWithImage` fixture to `ArticleTestData` and updated `ImageViewerTest` to use it, ensuring both the "has image" and "no image" cases are covered.
+
+**Validation performed:**
+At the Agent Mode checkpoint, the full gate specified in the phase requirements
+was executed: `./gradlew clean :sharedLogic:allTests :sharedLogic:assemble :sharedLogic:check :androidApp:testDebugUnitTest :androidApp:assembleDebug :androidApp:lintDebug :androidApp:connectedDebugAndroidTest`. All tests passed (7 instrumented tests total, including 2 new tests for the image viewer). Manual verification on the emulator confirmed smooth navigation from Detail to Viewer and back via both the close button and the system back button.
+
+**Subsequent Codex 7B adversarial remediation (not Agent Mode evidence):**
+The review added a regression for URL values containing `+` and percent escapes,
+then removed the second decode at the Navigation boundary. It also rejected
+blank/whitespace-only and malformed image URLs before exposing the hero action, added
+single-top viewer navigation, replaced the fixed close-button offset with
+status-bar insets, removed an unused viewer string, and strengthened the
+instrumentation matrix for exact one-layer close, preserved Detail/List routes,
+refresh-count stability, and failed-image safety.
+
+The revalidation gate passed with 36 Android shared tests, 37 iOS simulator
+shared tests, 21 Android application unit tests, and 12 Pixel_9 connected tests;
+`git diff --check` passed. This independent Codex work is not attributed to
+Android Studio Agent Mode.
+
+---
+
+## Entry 8
+
+**Task/category:**
+Phase 7C: US/ID Country Selection + Country-Aware Offline Correctness
+
+**Prompt / context given to Agent Mode:**
+Implement country selection for US (🇺🇸) and ID (🇮🇩) with isolated local caches. This involves database migration to a composite primary key `(id, countryCode)`, updating the `ArticleRepository` contract to be country-aware, and adding a country selector UI. Ensure that switching countries preserves and correctly displays country-specific data offline.
+
+**What the agent produced:**
+Updated `ArticleEntity`, `ArticleDao`, `AppDatabase` (migration 1->2), `ArticleRepository` interface, `OfflineFirstArticleRepository`, `ArticleListViewModel`, `ArticleDetailViewModel`, `ArticleListScreen`, `NavRoutes`, and `KabarKabarNavGraph`. Updated and added unit/connected tests.
+
+**My review:**
+The agent successfully performed a non-destructive database migration and isolated the caches by country. The UI selector correctly triggers a country switch and restarts the data observation. The persistence of other-country data during a refresh of the selected country was correctly implemented in the DAO and data sources.
+
+**What I changed or rejected, and why:**
+1. **Duplicate Method Definitions**: During the ViewModel update, I accidentally left duplicate copies of several private methods at the end of the file because the replacement block wasn't precise enough. I identified the 25 compilation errors immediately and removed the redundant code.
+2. **Test Isolation Mistake**: The first attempt at the country-switch unit test failed because the `FakeArticleRepository` in the test used a single `SharedFlow` for all countries. This caused the "ID" observation to immediately receive the "US" articles from the replay buffer. I corrected this by updating the fake repository to use a `Map<String, Flow>` to correctly simulate isolated caches.
+3. **Migration Omission**: I initially only added the Room migration to the `androidApp` DI module. I realized this would cause iOS tests to fail (and they did). I corrected this by moving the migration registration into the platform-specific `getDatabaseBuilder()` actual implementations in `sharedLogic`.
+
+**Validation performed:**
+Executed the full gate: `./gradlew clean :sharedLogic:allTests :sharedLogic:testDebugUnitTest :androidApp:testDebugUnitTest :androidApp:connectedDebugAndroidTest`. All tests passed (14 instrumented tests total, including the new `CountrySelectionTest`). Manual verification confirmed that switching to ID (which NewsAPI currently returns as empty) correctly shows the Empty state without erasing the US cache, and switching back to US immediately restores the cached data.
+
+**Subsequent Codex 7C adversarial remediation (not Agent Mode evidence):**
+The persistence review found that the candidate still exposed unconstrained
+string country values and that the list ViewModel could let a late refresh from
+the previous country block or classify the selected country. Codex replaced the
+country boundary with the shared US/ID model, added generation/country guards
+around refresh results, added state-based C1–C7 regressions including a real v1
+Room migration test, and verified the final candidate with 45 Android shared
+tests, 47 iOS simulator shared tests, 26 Android application unit tests, and
+15 Pixel_9 connected tests. These corrections are independent of the recorded
+Agent Mode checkpoint above.
+
+---
+
+## Entry 9
+
+**Task/category:**
+Phase 7D: Pagination / Load More
+
+**Prompt / context given to Agent Mode:**
+Implement pagination for the News Reader using NewsAPI's `page` and `pageSize` parameters. Update the `ArticleRepository` to support `loadMoreArticles(country)` and `canLoadMore(country)`. Manage isolated paging state per country in the repository. Update the `ArticleListViewModel` and `ArticleListScreen` to support a non-blocking "Load more" footer and trigger loading at the end of the list. Implement D1-D6 tests.
+
+**What the agent produced:**
+Updated `ArticleRepository.kt`, `RemoteArticleDataSource.kt`, `LocalArticleDataSource.kt`, `OfflineFirstArticleRepository.kt`, `ArticleListUiState.kt`, `ArticleListViewModel.kt`, `ArticleListScreen.kt`, and `strings.xml`. Updated and added repository and ViewModel unit tests.
+
+**Initial review recorded at the Agent Mode checkpoint:**
+The checkpoint reported country-isolated paging, independent refresh/load-more
+state, an end-of-list trigger, and a graceful failure fallback. A later Codex
+adversarial review did not accept that checkpoint as final evidence; the RED
+tests below found stale-operation and metadata/dedupe defects.
+
+**What I changed or rejected, and why:**
+1. **Conflicting Mutex logic**: I initially considered using separate mutexes for refresh and load-more, but realized this could lead to race conditions when modifying the same local database snapshot. I decided to reuse the `refreshMutex` to ensure atomic modifications of a country's article set.
+2. **Missing Test Data Helper**: The repository unit tests initially failed to compile because I forgot to include the `articleDto` helper function in the test file when adding the D1-D4 tests. I added the helper to restore the build.
+3. **PagingFooter Logic Warning**: The initial `PagingFooter` implementation had a redundant `if (isError)` check that triggered a "condition is always true" lint warning due to the preceding guard clause. I simplified the logic to use a `when` block for better clarity and to satisfy the linter.
+
+**Validation reported for the Agent Mode checkpoint:**
+The entry reported the full gate command and simulated UI checks. That report is
+retained as historical Agent Mode evidence, not as the final 7D approval.
+
+---
+
+## Codex 7D adversarial remediation
+
+The follow-up review wrote failing tests before changing production behavior. It
+reproduced stale page results after refresh and country switch, duplicate
+load-more triggers, page failure/cache preservation, invalid page metadata, and
+cross-page duplicate replacement. The remediation added repository generation
+checks, per-country mutexes, transactional conflict-ignore append, ViewModel
+page-job tokens, and deterministic Pixel_9 pagination tests.
+
+Final local validation passed with 56 Android shared tests, 58 iOS simulator
+tests, 34 Android application unit tests, and 17 Pixel_9 connected tests. This
+Codex work is separate from the Android Studio Agent Mode evidence above; it did
+not add a new Agent Mode task.
+
+---
+
+---
+
+## Entry 10
+
+**Task/category:**
+Phase 7E: Native SwiftUI iOS Application
+
+**Prompt / context given to Agent Mode:**
+Implement a native SwiftUI iOS application that reuses the KMP shared logic. Refactor the existing Koin DI to move shared components from `androidApp` to `sharedLogic/commonMain`. Implement a `FlowWrapper` in `sharedLogic/iosMain` to facilitate Flow consumption in Swift. Create native SwiftUI ViewModels and Views in `iosApp` that mirror the Android functionality (List with refresh/pagination, and Detail). Ensure the iOS app follows native design principles and supports light/dark mode.
+
+**What the agent produced:**
+- `SharedModule.kt`: Moved repository, database, and networking DI to `commonMain`.
+- `FlowWrapper.kt` & `KoinIOS.kt`: Added Swift ergonomics to `iosMain`.
+- Updated `androidApp` DI to use `sharedModule`.
+- `Koin.swift`, `ArticleListViewModel.swift`, `ArticleDetailViewModel.swift`, `ArticleListView.swift`, `ArticleDetailView.swift`, and `iOSApp.swift` in `iosApp`.
+- Updated `README.md` with iOS instructions.
+
+**Checkpoint review (not accepted as final evidence):**
+The checkpoint described a reusable shared module and a Swift bridge, but its
+conclusions were not accepted without compilation and lifecycle verification.
+The candidate still had a real compile error (`SyncError` has no `message`),
+referenced fields absent from the shared `Article` model, ignored
+`RefreshResult.Failure`, hard-coded US detail navigation, and retained the
+Swift observation callback strongly enough to risk a ViewModel/collector
+cycle. These are concrete defects in the generated candidate, not invented
+examples.
+
+**What I changed or rejected, and why:**
+1. **Unused Imports in Android DI**: After moving components to `sharedModule`, I initially left several unused imports in `androidApp/AppModule.kt`. I cleaned these up after the agent pointed them out via warnings.
+2. **Swift Generic Loss**: I noticed that `ArticleObservation<T>` might lose its generic type when bridged to Swift through `FlowWrapper`. I used explicit casting in Swift (`observation as? ArticleObservationData<NSArray>`) to ensure type safety.
+3. **AsyncImage Placeholder**: The initial SwiftUI detail view didn't have a placeholder for images. I added a simple colored rectangle to improve the UI while images are loading.
+
+**Validation reported at the checkpoint:**
+The entry originally reported shared tests, Android tests, a simulator framework
+link, and manual iOS flows. Those claims are retained as historical Agent Mode
+output only; the later Codex audit did not treat them as verified evidence.
+
+## Codex 7E adversarial remediation
+
+The follow-up review corrected the Swift state mapping and model-field errors,
+made refresh results and cache-preserving failures explicit, passed the shared
+repository and country to detail, added weak callbacks and cancellable scope
+ownership, removed the unnecessary Koin framework export, moved Android DI to an
+Android-only bridge, added ignored iOS xcconfig setup, and added a deterministic
+iOS launch UI-test target/scheme. The iOS test target is intentionally small;
+shared KMP and Android tests remain the deeper behavior matrix.
+
+Independent final local evidence:
+
+- clean shared/Android gate: 56 Android shared tests, 58 iOS shared tests, 34 Android unit tests, lint/check/assemble green;
+- Pixel_9 connected suite: 17/17 passed;
+- Apple framework links: simulator and device debug frameworks passed;
+- Xcode `iosApp` build passed;
+- Xcode `iosAppTests` on iPhone 17 Pro Max iOS Simulator: 1/1 passed;
+- Computer Use Simulator QA observed list/prominent row, detail/back, viewer,
+  US/ID switching and cache isolation, cached refresh failure, light/dark,
+  and Dynamic Type. Pull-to-refresh is implemented through SwiftUI
+  `.refreshable`; the visual gesture was not used as deterministic test evidence.
+
 ## Evidence status
 
-Entries 1–6 are recorded above. Entry 2 is a meaningful Android Studio Agent
-Mode data-layer task and includes the documented empty-vs-malformed mapper
-correction, dependency correction, and Room constructor correction. Entry 3 is
-the reported meaningful Android Studio Agent Mode acceptance-test task; Codex
-review/remediation work is not counted as Agent Mode evidence.
-Entry 6 is the reported meaningful Android Studio Agent Mode Compose UI
-acceptance-test task; the later T4/T5 boundary corrections are Codex review
-work and are not attributed to Agent Mode.
-
-The mapper correction is supported by the Phase 2 artifact available at the
-start of this Codex review: the earlier indexed mapper returned a plain article
-list, while the pre-review working-tree version introduced the explicit
-success/malformed result needed to preserve the empty-vs-malformed distinction.
-No additional AI mistake is being claimed here.
+Entries 1–10 are recorded above. Entry 2, Entry 3, Entry 6, Entry 8, Entry 9, and Entry 10 are
+meaningful Android Studio Agent Mode tasks. Entry 9 is an historical checkpoint;
+the subsequent Codex review and remediation are documented separately and are
+not presented as Agent Mode evidence.
 
 ## Good Candidate Tasks
 

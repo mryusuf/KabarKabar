@@ -27,5 +27,5 @@ actual fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
     return Room.databaseBuilder<AppDatabase>(
         context = appContext,
         name = dbFile.absolutePath
-    )
+    ).addMigrations(AppDatabase.MIGRATION_1_2)
 }

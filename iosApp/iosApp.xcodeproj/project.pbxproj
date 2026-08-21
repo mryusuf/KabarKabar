@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		5F72BCE11DB4A639F980FE94 /* KabarKabar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KabarKabar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D4A5BCE11DB4A639F980FE94 /* iosAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iosAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -34,10 +35,22 @@
 			path = Configuration;
 			sourceTree = "<group>";
 		};
+		D4A5C13B702FAD7074CCAB23 /* iosAppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = iosAppUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		655A7CB509933A02EA77EECB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D4A5A7CB50993302EA77EEC1 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -60,6 +73,7 @@
 			isa = PBXGroup;
 			children = (
 				5F72BCE11DB4A639F980FE94 /* KabarKabar.app */,
+				D4A5BCE11DB4A639F980FE94 /* iosAppUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -90,6 +104,29 @@
 			productReference = 5F72BCE11DB4A639F980FE94 /* KabarKabar.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D4A5E14E5361A02615799922 /* iosAppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D4A5D0F1D86E62BAFBAD20B /* Build configuration list for PBXNativeTarget "iosAppUITests" */;
+			buildPhases = (
+				D4A5A7CB50993302EA77EEC3 /* UI Test Sources */,
+				D4A5A7CB50993302EA77EEC1 /* Frameworks */,
+				D4A5A7CB50993302EA77EEC2 /* UI Test Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D4A5D4B702FAD7074CCAB241 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D4A5C13B702FAD7074CCAB23 /* iosAppUITests */,
+			);
+			name = iosAppUITests;
+			packageProductDependencies = (
+			);
+			productName = iosAppUITests;
+			productReference = D4A5BCE11DB4A639F980FE94 /* iosAppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -102,6 +139,10 @@
 				TargetAttributes = {
 					46C0E14E5361A02615799921 = {
 						CreatedOnToolsVersion = 16.2;
+					};
+					D4A5E14E5361A02615799922 = {
+						CreatedOnToolsVersion = 16.2;
+						TestTargetID = 46C0E14E5361A02615799921;
 					};
 				};
 			};
@@ -120,12 +161,20 @@
 			projectRoot = "";
 			targets = (
 				46C0E14E5361A02615799921 /* iosApp */,
+				D4A5E14E5361A02615799922 /* iosAppUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		74A46F7DA3A0EF808ECED15D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D4A5A7CB50993302EA77EEC2 /* UI Test Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -164,7 +213,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D4A5A7CB50993302EA77EEC3 /* UI Test Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		D4A5D3B702FAD7074CCAB240 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 90E8D00D7210BACA9109125D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 46C0E14E5361A02615799921;
+			remoteInfo = iosApp;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		D4A5D4B702FAD7074CCAB241 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 46C0E14E5361A02615799921 /* iosApp */;
+			targetProxy = D4A5D3B702FAD7074CCAB240 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		91AA69B3561252C638CD1621 /* Debug */ = {
@@ -346,6 +420,46 @@
 			};
 			name = Release;
 		};
+		D4A569B3561252C638CD1622 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "${TEAM_ID}";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.mryusuf.kabarkabar.KabarKabarUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = iosApp;
+			};
+			name = Debug;
+		};
+		D4A56AEBF2D61A42329CCFAB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "${TEAM_ID}";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.mryusuf.kabarkabar.KabarKabarUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = iosApp;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -363,6 +477,15 @@
 			buildConfigurations = (
 				55D8D3F17407DB893D50F0D4 /* Debug */,
 				D587B470702CE092B26D7C85 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D4A5D0F1D86E62BAFBAD20B /* Build configuration list for PBXNativeTarget "iosAppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D4A569B3561252C638CD1622 /* Debug */,
+				D4A56AEBF2D61A42329CCFAB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

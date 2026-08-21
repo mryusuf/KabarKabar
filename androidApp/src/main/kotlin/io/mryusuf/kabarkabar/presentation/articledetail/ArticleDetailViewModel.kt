@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.mryusuf.kabarkabar.domain.error.SyncError
 import io.mryusuf.kabarkabar.domain.model.ArticleId
 import io.mryusuf.kabarkabar.domain.model.ArticleObservation
+import io.mryusuf.kabarkabar.domain.model.NewsCountry
 import io.mryusuf.kabarkabar.domain.repository.ArticleRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,9 +21,10 @@ import kotlinx.coroutines.flow.stateIn
 class ArticleDetailViewModel(
     private val repository: ArticleRepository,
     articleId: ArticleId,
+    country: NewsCountry,
 ) : ViewModel() {
 
-    val uiState: StateFlow<ArticleDetailUiState> = repository.observeArticle(articleId)
+    val uiState: StateFlow<ArticleDetailUiState> = repository.observeArticle(articleId, country)
         .map { observation ->
             when (observation) {
                 is ArticleObservation.Data -> observation.value?.let(ArticleDetailUiState::Data)

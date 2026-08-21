@@ -1,5 +1,8 @@
 TEAM_ID=
 
+NEWS_API_KEY=
+#include? "Config.local.xcconfig"
+
 PRODUCT_NAME=KabarKabar
 PRODUCT_BUNDLE_IDENTIFIER=io.mryusuf.kabarkabar.KabarKabar$(TEAM_ID)
 

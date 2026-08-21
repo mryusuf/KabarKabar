@@ -2,7 +2,7 @@
 
 A production-minded offline-first News Reader built for the PT Inosoft Trans Sistem Mobile Developer take-home test.
 
-> Status: Phases 0–6 are complete locally. The verified candidate still requires commit/push and one final anonymous clone check. Phase 7 bonus work has not started.
+> Status: Phases 0–6 remain protected by `release-v1.0.0`. Phases 7A–7E pass the local final audit after remediation; commit/push and final clean-clone verification are still required before release approval.
 
 ## Goal
 
@@ -26,9 +26,84 @@ Demonstrate:
 - [x] Cached content remains visible after refresh failure
 - [x] Non-blocking refresh error when cache exists
 - [x] Clear error state when neither remote nor local data is usable
+- [x] Full-screen image viewer
 - [x] System back + app-bar back navigation
 - [x] Required unit tests
 - [x] Required Compose UI tests
+
+## Phase 7A Review Status
+
+- [x] System-driven light/dark theme and system-bar contrast
+- [x] Prominent first article without `Featured` semantics
+- [x] Compact later rows with stable article-ID keys
+- [x] Optional image/description-safe List and Detail layouts
+- [x] Prominent hero fallback while an image is loading, unavailable, or missing
+- [x] Loading, Empty, blocking Error, and cached refresh-failure presentation
+- [x] Accessibility baseline and larger-font smoke check
+- [x] Clean Android/shared test and Pixel_9 runtime gate
+
+The Codex 7A review made presentation-only changes. `sharedLogic` data/domain
+contracts remain unchanged, and the immutable `release-v1.0.0` tag is retained as
+the fallback. No new Android Studio Agent Mode task was performed for this review;
+the existing AI usage log remains the source of prior Agent Mode evidence.
+
+## Phase 7C Review Status
+
+- [x] Exact shared `US("us")` and `ID("id")` country model
+- [x] compact accessible `🇺🇸 US` / `🇮🇩 ID` dropdown, defaulting to US on a new launch
+- [x] Explicit country-scoped remote, Room, list, refresh, and detail paths
+- [x] Composite Room identity and non-destructive v1 -> v2 migration
+- [x] C1–C7 state, concurrency, and migration regression coverage
+- [x] Pixel_9 country-switch and migration runtime tests
+
+The 7C review found and corrected an unconstrained string country boundary and a
+ViewModel race where a late refresh from the previous country could block or
+classify the newly selected country. Country selection is not persisted across
+launches; a new launch defaults to US. ID may legitimately show Empty when
+NewsAPI has no current headlines, without affecting the US cache.
+
+## Phase 7D Review Status
+
+- [x] NewsAPI `page=1`/`pageSize=20` refresh and next-page requests
+- [x] response metadata validation and country-scoped has-more state
+- [x] transactional persisted append with stable-ID first-wins dedupe
+- [x] refresh/page separation and stale-response invalidation
+- [x] duplicate-trigger, refresh/page, country/page, and late-response tests
+- [x] non-blocking progress/failure footer and end-of-list trigger
+- [x] D1–D6 regression coverage plus Pixel_9 pagination UI tests
+
+The 7D review found that a mutex alone did not prevent stale ViewModel state or
+a page response from appending after a newer refresh began. Paging now uses
+country-scoped operation generations, ViewModel job tokens, and a Room
+transaction with conflict-ignore inserts. A failed page leaves the visible list
+intact and returns to a simple `Load more` action; it never becomes a blocking
+list error.
+
+## Phase 7E Review Status
+
+Phase 7E is a local candidate, not a final release. SwiftUI owns presentation
+only. `IOSDependencyContainer` supplies the shared `ArticleRepository`, and
+`FlowWrapper` exposes cancellable shared observations on the main dispatcher.
+Swift does not implement NewsAPI requests, Room/SQL persistence, country cache
+isolation, stable article IDs, or paging/dedupe.
+
+If the ignored iOS `Config.local.xcconfig` is absent or its key is blank, the
+native UI intentionally observes the existing Room cache without attempting a
+remote sync. Configure the local key to enable fresh headlines and paging.
+
+- [x] Apple simulator/device framework links and Xcode app build
+- [x] native list, prominent first row, detail, back navigation, and viewer
+- [x] shared US/ID selector and country-scoped repository calls
+- [x] shared paging calls with a non-blocking footer failure path
+- [x] loading, empty, blocking error, and cached refresh-failure presentation
+- [x] cache-only startup when local iOS API configuration is absent
+- [x] left thumbnails for later rows when image URLs are available
+- [x] cancellable Flow bridge with weak Swift callbacks and operation generations
+- [x] local ignored iOS API-key configuration and reproducible shared schemes
+- [x] two deterministic iOS launch/country UI tests; broader iOS flow tests remain limited
+- [x] Simulator Computer Use QA for list/detail/back/viewer/country/cache failure/theme/Dynamic Type
+- [x] local final Phase 7 audit and full Android/iOS regression gates
+- [ ] commit/push, final clean-clone verification, and release decision
 
 ## Tech Stack
 
@@ -57,7 +132,9 @@ sharedLogic / Domain  <----- sharedLogic / Data
                                   repository implementation
 ```
 
-The existing `sharedUI` module is not part of the target architecture. Android presentation remains in `androidApp`; iOS UI is outside core scope.
+The existing `sharedUI` module is not part of the target architecture. Android
+presentation remains in `androidApp`; the native iOS UI is a thin Phase 7E
+bonus layer over the shared repository.
 
 Offline-first data flow:
 
@@ -130,14 +207,70 @@ The key must be treated as public client configuration: Android packages can be
 inspected. Never log it, put it in shared domain state, or commit it to source
 control. The repository contains only the setup instructions above.
 
+## iOS Setup & Run
+
+### Prerequisites
+
+- macOS with Xcode 15.0+ installed.
+- Android Studio with the KMP project open.
+- A configured local iOS xcconfig; `local.properties` is still used by Gradle and Android.
+
+### Build & Run
+
+1. Copy the ignored iOS configuration and fill it locally:
+
+    ```bash
+    cp iosApp/Configuration/Config.local.xcconfig.example \
+      iosApp/Configuration/Config.local.xcconfig
+    # Edit Config.local.xcconfig and set NEWS_API_KEY to a local key.
+    ```
+
+    Do not edit `Koin.swift` or commit the local configuration. Xcode reads the
+    key from the generated Info.plist setting; `local.properties` is not read
+    automatically by Xcode.
+2. Build the shared Apple frameworks:
+
+    ```bash
+    ./gradlew :sharedLogic:linkDebugFrameworkIosSimulatorArm64 \
+      :sharedLogic:linkDebugFrameworkIosArm64
+    ```
+
+3. Build the app or open `iosApp/iosApp.xcodeproj` in Xcode:
+
+    ```bash
+    xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp \
+      -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' build
+    ```
+
+4. Run the deterministic launch test scheme:
+
+    ```bash
+    xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosAppTests \
+      -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' test
+    ```
+
+### iOS Architecture
+
+The iOS application uses native **SwiftUI** for presentation.
+- **SharedLogic**: Provides the `ArticleRepository`, `Article` domain models,
+  country identity, Room-backed offline-first repository, Ktor synchronization,
+  paging/dedupe, and `FlowWrapper` for observation.
+- **Swift adapters**: `ArticleListViewModel` and `ArticleDetailViewModel` map
+  shared observations/results to native state, cancel observations on disposal,
+  and keep refresh failures non-blocking when cache exists.
+- **Native UI**: SwiftUI provides the list/detail/viewer, `.refreshable`, native
+  navigation, system appearance, and Dynamic Type. `AsyncImage` is limited to
+  presentation-only image loading; article synchronization and persistence stay
+  in shared code.
+
 ### Submission country decision
 
 The take-home PDF used `country=id` as a sample. During development it returned
 no current articles, so Inosoft was contacted and explicitly approved
-`country=us`, currently the only country returning non-empty data. The
-submitted app therefore configures `us` so the complete online/offline flow can
-be demonstrated. A country selector and automatic country fallback remain out
-of scope; empty-state coverage uses deterministic test data.
+`country=us`, currently the only country returning non-empty data. Phase 7C
+retains US as the default while also exposing an explicit ID selector and
+independent cache; it does not perform automatic country fallback. Empty-state
+coverage uses deterministic test data.
 
 ## Build & Run
 
@@ -174,11 +307,12 @@ test and manual runtime commands.
   -Pandroid.testInstrumentationRunnerArguments.class=io.mryusuf.kabarkabar.OfflineBehaviorTest
 ```
 
-The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 10
-`ArticleListViewModelTest` cases, 2 `ArticleDetailViewModelTest` cases, and 1
-navigation boundary test (18 total). The instrumented task runs 2 Compose UI
-acceptance tests (T4 and T5). The shared logic suite currently runs 36 tests
-on Android and 37 on iOS.
+The Android unit task currently runs 5 `ArticleListUiStateTest` cases, 22
+`ArticleListViewModelTest` cases, 2 `ArticleDetailViewModelTest` cases, 2
+`ThemeTest` cases, and 3 navigation boundary tests (34 total). The
+instrumented task runs 17 tests, including T4, T5, Phase 7A state checks, the
+Phase 7B viewer matrix, country switching, Room migration, and pagination. The
+shared logic suite currently runs 57 tests on Android and 59 on iOS.
 
 To manually verify the current Android application on a connected device:
 
@@ -192,7 +326,9 @@ adb shell am start -n io.mryusuf.kabarkabar/.MainActivity
 - Room is the exclusive readable source of article data for higher layers.
 - Successful remote synchronization writes to Room.
 - UI observes local persisted state rather than rendering the raw network response.
-- The repository contract is `observeArticles()`, `observeArticle(id)`, and `refreshArticles()`.
+- The repository contract is `observeArticles(country)`, `observeArticle(id, country)`, and
+  `refreshArticles(country)`, `loadMoreArticles(country)`, and
+  `canLoadMore(country)`, where `country` is the shared US/ID model.
 - Each article has a stable deterministic local ID derived from its canonical URL; Navigation passes the ID, not the whole article.
 - A valid successful empty response may replace the previous snapshot and produces the Empty state.
 - Existing cache survives remote refresh failure.
@@ -239,6 +375,7 @@ review/remediation is kept separate from Agent Mode evidence.
 | 4 | Phase 4A ViewModel state orchestration and presentation tests | See `plan/ai-usage-log.md` Entry 4 | Agent Mode corrected the initial empty-vs-failed-sync state distinction; the later independent Codex review/remediation is not Agent Mode evidence | `:androidApp:testDebugUnitTest`: 15 cases after remediation |
 | 5 | Phase 4B Compose screens, navigation, pull-to-refresh, and Coil image loading | See `plan/ai-usage-log.md` Entry 5 | Gemini-assisted image debugging recorded the missing Coil 3 network integration and singleton ImageLoader correction; independent review fixes remain separate | Debug assemble plus Pixel 9 exploratory runtime checks |
 | 6 | Phase 5 Compose UI acceptance tests (T4 & T5) | See `plan/ai-usage-log.md` Entry 6 | Agent Mode corrections and the subsequent Codex review are explicitly separated; Codex seeded cache before activity launch, recorded the configured refresh failure, and added distinguishable T4 identity fixtures | T4 individually, T5 individually, and together: 2 PASSED on Pixel_9 |
+| 7 | Phase 7B Full-Screen Image Viewer | See `plan/ai-usage-log.md` Entry 7 | Agent implementation was independently reviewed; URL double-decoding and unusable-image exposure were corrected, with navigation/back-stack and failure regressions added | Full clean/shared gate plus 13 Pixel_9 connected tests |
 
 At least one final entry must describe a real AI-generated mistake/suboptimal approach and how it was corrected.
 
@@ -262,34 +399,38 @@ Do not start bonuses until core behavior and tests are green.
 
 Potential bonuses:
 
-- dark mode,
-- commonTest coverage,
-- shared iOS target / iOS app if practical,
-- pagination,
-- full-screen image viewer,
-- accessibility polish.
+- [x] system dark mode (Phase 7A),
+- [x] full-screen image viewer (Phase 7B),
+- [x] country selection and country-aware offline isolation (Phase 7C),
+- [ ] commonTest coverage,
+- [x] native SwiftUI iOS application (Phase 7E),
+- [x] pagination (Phase 7D),
+- [ ] full accessibility audit beyond the Phase 7A baseline.
 
 ## Known Limitations
 
-- **Offline Images**: Articles images depend on the Coil disk cache. If an image was not loaded while online, it will not be available offline. Full offline image persistence is out of scope.
+- **Offline Images**: Android images depend on Coil's disk cache and the iOS bonus UI uses `AsyncImage`; if an image was not loaded while online, it will not be available offline. Full offline image persistence is out of scope.
 - **NewsAPI Content**: NewsAPI typically provides a short description or snippet rather than the full article body. The app displays what is available from the API.
-- **Country Availability**: Some countries may return empty results from NewsAPI depending on current news volume or provider availability. `country=us` is used by default as it is currently the most reliable.
+- **Country Availability**: Some countries may return empty results from NewsAPI depending on current news volume or provider availability. The app defaults to `US (country=us)`; `ID (country=id)` remains an independent cache and may show Empty.
+- **iOS Test Depth**: The iOS project has two deterministic launch/country UI tests. The richer state and repository matrix remains covered by shared KMP and Android tests; the iOS Simulator manual pass supplements but does not replace those tests.
+- **Submission State**: This working tree is an uncommitted candidate. `release-v1.0.0` is the immutable fallback; no Phase 8 work or release tag is authorized by this review.
 
 ## Future Work / Bonuses
-- **Country Selector**: Allow users to change the news country from within the app.
-- **Pagination**: Implement "Load More" for the article list.
-- **Dark Mode**: Complete the Material 3 dark theme support.
-- **Accessibility**: Conduct a full WCAG audit and improve screen reader support.
-- **iOS Application**: Build a native SwiftUI application using the shared logic.
+- **Country Selection Persistence**: Preserve the selected country across launches; 7C currently defaults to US on a new launch.
+- **Pagination**: Paging metadata is kept in the shared repository instance and
+  is reset by a successful refresh. Both Android and iOS call the shared
+  load-more path; iOS uses a near-end row trigger.
+- **Accessibility**: Conduct a full WCAG audit and improve screen reader support beyond the Phase 7A baseline.
+- **iOS Application**: Broader deterministic iOS detail/pagination-failure UI coverage remains optional future hardening; shared KMP and Android tests cover those behavior matrices today.
 
 ## Submission Checklist
 
 - [x] Public GitHub/GitLab repository
-- [x] Clean checkout is runnable after API-key setup
+- [ ] Candidate clean checkout is runnable after API-key setup (pending final audit)
 - [x] No real API key in repository or git history
 - [x] Required behavior works
 - [x] Required tests pass
-- [x] README setup instructions verified on a clean state
+- [ ] README setup instructions verified on a clean candidate state
 - [x] Architecture and trade-offs documented
 - [x] 3+ Android Studio Agent Mode tasks documented
 - [x] At least 1 real AI mistake/correction documented
